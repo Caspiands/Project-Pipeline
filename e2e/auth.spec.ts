@@ -38,7 +38,8 @@ test.describe('sign-in with emailed code', () => {
     // The right code opens the board (auto-submits at 6 digits).
     await page.getByLabel('6-digit code').fill(code)
     await expect(page).toHaveURL(/\/overview$/)
-    await expect(page.getByRole('heading', { name: 'CDS Pipeline Board' })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Caspian Digital Solutions' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Pipeline Board' })).toBeVisible()
     await expect(page.getByText('Bharg')).toBeVisible()
     await expect(page.getByText('admin', { exact: true })).toBeVisible()
     await expect(page.getByText(/verified until \d\d:\d\d/)).toBeVisible()
@@ -47,7 +48,8 @@ test.describe('sign-in with emailed code', () => {
     // Reload keeps the person in: the database, not the browser, remembers the verification.
     await page.reload()
     await expect(page).toHaveURL(/\/overview$/)
-    await expect(page.getByRole('heading', { name: 'CDS Pipeline Board' })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Caspian Digital Solutions' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Pipeline Board' })).toBeVisible()
 
     // Visiting the code step while verified goes straight back to the board.
     await page.goto('/verify')

@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { BrandLogo } from './BrandLogo'
 import { FilterBar } from './FilterBar'
 import { IdleTimeoutGuard } from './IdleTimeoutGuard'
 import { OpportunityDrawer } from './OpportunityDrawer'
@@ -55,8 +56,9 @@ function AppShellFrame() {
       <header className="top">
         <div className="wrap">
           <div className="top-row">
-            <div>
-              <h1 className="brand">CDS Pipeline Board</h1>
+            <div className="brand-block">
+              <BrandLogo variant="bar" />
+              <h1 className="auth-product brand-product">Pipeline Board</h1>
               <div className="sub">Whole company · values in RM · one row per opportunity</div>
             </div>
             <span className="spacer" />
