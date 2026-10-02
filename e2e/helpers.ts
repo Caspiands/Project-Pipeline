@@ -7,6 +7,9 @@ export const ADMIN_EMAIL = 'admin@caspiands.com'
 export const EDITOR_EMAIL = 'editor@caspiands.com'
 export const VIEWER_EMAIL = 'viewer@caspiands.com'
 export const DEACTIVATED_EMAIL = 'off@caspiands.com'
+export const RESET_EMAIL = 'reset@caspiands.com'
+
+const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://127.0.0.1:54324'
 
 const EDGE_RUNTIME_CONTAINER = process.env.EDGE_RUNTIME_CONTAINER ?? 'supabase_edge_runtime_cds-pipeline-board'
 
@@ -55,4 +58,33 @@ export async function signInFully(page: Page, email: string) {
   const code = await waitForCode(email, since)
   await page.getByLabel('6-digit code').fill(code)
   await expect(page).toHaveURL(/\/overview$/)
+}
+
+interface MailpitSummary {
+  ID: string
+  Subject: string
+  Created: string
+  To: { Address: string }[]
+}
+
+/** Auth emails (password resets, invites) land in the local Mailpit inbox. Returns the first link in the newest one. */
+export async function waitForAuthEmailLink(to: string, since: Date, subjectMatch: RegExp): Promise<string> {
+  let link = ''
+  await expect
+    .poll(
+      async () => {
+        const list = (await (await fetch(`${MAILPIT_URL}/api/v1/messages?limit=25`)).json()) as { messages: MailpitSummary[] }
+        const msg = list.messages.find(
+          (m) => m.To.some((t) => t.Address.toLowerCase() === to) && subjectMatch.test(m.Subject) && new Date(m.Created) >= since,
+        )
+        if (!msg) return ''
+        const full = (await (await fetch(`${MAILPIT_URL}/api/v1/message/${msg.ID}`)).json()) as { Text: string; HTML: string }
+        const m = (full.Text || full.HTML).match(/https?:\/\/[^\s"<>]+/)
+        link = m ? m[0].replace(/&amp;/g, '&') : ''
+        return link
+      },
+      { timeout: 30_000, message: `no "${subjectMatch}" email for ${to} arrived in Mailpit (${MAILPIT_URL})` },
+    )
+    .not.toBe('')
+  return link
 }

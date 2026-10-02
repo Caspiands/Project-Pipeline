@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN_EMAIL, DEACTIVATED_EMAIL, EDITOR_EMAIL, VIEWER_EMAIL, codesLoggedSince, signInFully, signInWithPassword, waitForCode } from './helpers'
+import {
+  ADMIN_EMAIL,
+  DEACTIVATED_EMAIL,
+  EDITOR_EMAIL,
+  RESET_EMAIL,
+  VIEWER_EMAIL,
+  codesLoggedSince,
+  signInFully,
+  signInWithPassword,
+  waitForAuthEmailLink,
+  waitForCode,
+} from './helpers'
 
 test.describe('sign-in with emailed code', () => {
   test('sign in → wrong code → right code → board → reload stays in → sign out', async ({ page }) => {
@@ -90,6 +101,42 @@ test.describe('sign-in with emailed code', () => {
     await page.getByLabel('Work email').fill('nobody@caspiands.com')
     await page.getByRole('button', { name: 'Email me a reset link' }).click()
     await expect(page.getByRole('status')).toHaveText(/If that email has an account, a reset link is on its way/)
+  })
+
+  test('a password-reset link lets the person set a new password, then asks for a code', async ({ page }) => {
+    const since = new Date(Date.now() - 1000)
+    await page.goto('/reset')
+    await page.getByLabel('Work email').fill(RESET_EMAIL)
+    await page.getByRole('button', { name: 'Email me a reset link' }).click()
+    await expect(page.getByRole('status')).toHaveText(/a reset link is on its way/)
+
+    // The email's link goes through Supabase and lands on /set-password with type=recovery in the URL.
+    const link = await waitForAuthEmailLink(RESET_EMAIL, since, /reset/i)
+    expect(link).toContain('type=recovery')
+    expect(link).toContain('redirect_to=http://127.0.0.1:5917/set-password')
+    await page.goto(link)
+    await expect(page).toHaveURL(/\/set-password/)
+    await expect(page.getByRole('heading', { name: 'Set your password' })).toBeVisible()
+
+    // Too short, then mismatched, then a good one.
+    await page.getByLabel('New password', { exact: true }).fill('short')
+    await page.getByLabel('Repeat new password').fill('short')
+    await page.getByRole('button', { name: 'Save password' }).click()
+    await expect(page.getByRole('alert')).toHaveText('Use at least 10 characters.')
+    const newPassword = `reset-${Date.now()}-pw`
+    await page.getByLabel('New password', { exact: true }).fill(newPassword)
+    await page.getByLabel('Repeat new password').fill(newPassword + 'x')
+    await page.getByRole('button', { name: 'Save password' }).click()
+    await expect(page.getByRole('alert')).toHaveText('The two passwords do not match.')
+    await page.getByLabel('Repeat new password').fill(newPassword)
+    await page.getByRole('button', { name: 'Save password' }).click()
+
+    // Saving the password is not enough: the code step still follows.
+    await expect(page).toHaveURL(/\/verify$/)
+    await expect(page.getByRole('status')).toHaveText(/Password saved/)
+    await expect(page.getByText(/We sent a 6-digit code to re•••@caspiands\.com/)).toBeVisible()
+    await page.goto('/overview')
+    await expect(page).toHaveURL(/\/verify$/)
   })
 
   test('set-password without a link explains what to do', async ({ page }) => {

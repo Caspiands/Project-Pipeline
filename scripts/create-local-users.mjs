@@ -6,6 +6,7 @@
 //   editor@caspiands.com  editor, active
 //   viewer@caspiands.com  viewer, active
 //   off@caspiands.com     editor, access switched off (is_active = false)
+//   reset@caspiands.com   viewer; used only by the password-reset end-to-end test (its password changes)
 //
 // Safe to run again: existing users are left alone and their role/active flag is re-applied.
 // It talks to the local stack with the service-role key, which never leaves this machine.
@@ -19,6 +20,7 @@ export const LOCAL_USERS = [
   { email: 'editor@caspiands.com', full_name: 'Test editor', role: 'editor', is_active: true },
   { email: 'viewer@caspiands.com', full_name: 'Test viewer', role: 'viewer', is_active: true },
   { email: 'off@caspiands.com', full_name: 'Switched off', role: 'editor', is_active: false },
+  { email: 'reset@caspiands.com', full_name: 'Reset tester', role: 'viewer', is_active: true },
 ]
 
 const { apiUrl, serviceRoleKey } = localStatus()

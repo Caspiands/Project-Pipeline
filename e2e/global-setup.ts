@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
-import { ADMIN_EMAIL, DEACTIVATED_EMAIL, EDITOR_EMAIL, VIEWER_EMAIL } from './helpers'
+import { ADMIN_EMAIL, DEACTIVATED_EMAIL, EDITOR_EMAIL, RESET_EMAIL, VIEWER_EMAIL } from './helpers'
 
 /**
  * Before the end-to-end run: make sure the test logins exist and clear their recent code requests,
@@ -19,7 +19,7 @@ export default async function globalSetup() {
   const admin = createClient(status.API_URL, status.SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
   const { data: users, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
   if (error) throw error
-  const testEmails = new Set([ADMIN_EMAIL, EDITOR_EMAIL, VIEWER_EMAIL, DEACTIVATED_EMAIL])
+  const testEmails = new Set([ADMIN_EMAIL, EDITOR_EMAIL, VIEWER_EMAIL, DEACTIVATED_EMAIL, RESET_EMAIL])
   const ids = users.users.filter((u) => u.email && testEmails.has(u.email)).map((u) => u.id)
   if (ids.length) {
     const { error: delErr } = await admin.from('mfa_challenges').delete().in('user_id', ids)

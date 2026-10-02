@@ -43,7 +43,7 @@ jobs:
           version: latest
       # Starts Postgres, Auth, the API and the Edge Functions runtime; applies supabase/migrations
       # and supabase/seed.sql. Services the tests do not need are left out to keep the job quick.
-      - run: supabase start -x vector,imgproxy,storage-api,supavisor,studio,realtime,mailpit,logflare
+      - run: supabase start -x vector,imgproxy,storage-api,supavisor,studio,realtime,logflare
       - name: Row Level Security policy tests (pgTAP)
         run: supabase test db
       - name: Generated TypeScript types match the schema
