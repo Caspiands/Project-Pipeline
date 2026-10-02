@@ -9,7 +9,14 @@ export function VerifyPage() {
       <form noValidate onSubmit={(e) => e.preventDefault()}>
         <label className="field">
           <span>6-digit code</span>
-          <input className="otp-input" inputMode="numeric" autoComplete="one-time-code" maxLength={7} pattern="[0-9 ]*" disabled />
+          <input
+            className="otp-input"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={7}
+            pattern="[0-9 ]*"
+            disabled
+          />
         </label>
         <button className="primary" type="submit" disabled>
           Verify and open the board

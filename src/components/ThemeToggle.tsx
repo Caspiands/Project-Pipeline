@@ -36,7 +36,13 @@ function Icon({ choice }: { choice: ThemeChoice }) {
 export function ThemeToggle() {
   const { choice, cycle } = useTheme()
   return (
-    <button type="button" className="ghost theme-toggle" onClick={cycle} aria-label={LABELS[choice]} title={LABELS[choice]}>
+    <button
+      type="button"
+      className="ghost theme-toggle"
+      onClick={cycle}
+      aria-label={LABELS[choice]}
+      title={LABELS[choice]}
+    >
       <Icon choice={choice} />
       <span>{SHORT[choice]}</span>
     </button>

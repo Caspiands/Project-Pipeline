@@ -22,7 +22,14 @@ describe('app shell and routes', () => {
     renderAt('/')
     const nav = screen.getByRole('navigation', { name: 'Sections' })
     const links = within(nav).getAllByRole('link')
-    expect(links.map((l) => l.textContent)).toEqual(['Overview', 'Pipeline', 'Review', 'Prospects', 'Targets', 'Team & access'])
+    expect(links.map((l) => l.textContent)).toEqual([
+      'Overview',
+      'Pipeline',
+      'Review',
+      'Prospects',
+      'Targets',
+      'Team & access',
+    ])
     expect(within(nav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('heading', { level: 2, name: 'Overview' })).toBeInTheDocument()
   })

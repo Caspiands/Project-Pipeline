@@ -54,7 +54,8 @@ export function AppShell() {
         {!isConfigured && (
           <div className="banner" role="status">
             Not connected to Supabase yet: {missing.join(' and ')} {missing.length === 1 ? 'is' : 'are'} missing. Copy{' '}
-            <code>.env.example</code> to <code>.env.local</code> and fill in the values from <code>npx supabase status</code>.
+            <code>.env.example</code> to <code>.env.local</code> and fill in the values from{' '}
+            <code>npx supabase status</code>.
           </div>
         )}
         <main className="stack">

@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+
+  database:
+    name: Migration, seed and policy tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # Starts Postgres, applies supabase/migrations and supabase/seed.sql. Services the tests do
+      # not need are left out to keep the job quick.
+      - run: supabase start -x vector,imgproxy,storage-api,supavisor,edge-runtime,studio,realtime,mailpit,logflare
+      - name: Row Level Security policy tests (pgTAP)
+        run: supabase test db
+      - name: Generated TypeScript types match the schema
+        run: |
+          npm run db:types
+          git diff --exit-code -- src/lib/database.types.ts || {
+            echo "::error::src/lib/database.types.ts is out of date. Run: npm run db:types and commit the result."; exit 1; }
+      - if: always()
+        run: supabase stop --no-backup
