@@ -1,0 +1,23 @@
+/* Design tokens, copied exactly from the prototype's :root and dark-mode blocks (cds-pipeline-board.html).
+   Do not edit values here; change the prototype first so the two stay in step. */
+:root{
+  --bg:#f4f6f4; --surface:#ffffff; --surface-2:#eaefec; --line:#d5ddd8;
+  --fg:#16201b; --fg-2:#56645d; --fg-3:#7d8a84;
+  --accent:#1c6a55; --accent-ink:#ffffff; --accent-soft:#d5ebe2;
+  --warn:#9a5a06; --warn-soft:#fbecd5; --crit:#b3261e; --crit-soft:#f8dedb;
+  --p-white:#ffffff; --p-orange:#e8892b; --p-yellow:#e6c229; --p-green:#3f9b5a;
+  --font-display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --r:6px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1412; --surface:#151c19; --surface-2:#1c2521; --line:#2b3732;
+  --fg:#e4ebe7; --fg-2:#9fada6; --fg-3:#76847d;
+  --accent:#5ec4a5; --accent-ink:#0c1512; --accent-soft:#1d3a30;
+  --warn:#e3a64f; --warn-soft:#3a2b14; --crit:#f2877f; --crit-soft:#3d1d1a; --p-white:#d9dfdb; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1412; --surface:#151c19; --surface-2:#1c2521; --line:#2b3732;
+  --fg:#e4ebe7; --fg-2:#9fada6; --fg-3:#76847d;
+  --accent:#5ec4a5; --accent-ink:#0c1512; --accent-soft:#1d3a30;
+  --warn:#e3a64f; --warn-soft:#3a2b14; --crit:#f2877f; --crit-soft:#3d1d1a; --p-white:#d9dfdb; color-scheme:dark }

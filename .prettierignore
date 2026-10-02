@@ -1,0 +1,5 @@
+dist
+node_modules
+cds-pipeline-board.html
+supabase/functions
+src/lib/database.types.ts

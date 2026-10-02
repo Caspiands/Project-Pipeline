@@ -1,0 +1,86 @@
+/* Shell and shared component styles, ported from the prototype so the app looks the same.
+   Layout: sticky header + tabs, then each tab's sections stacked. */
+@import './tokens.css';
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+a{color:var(--accent)}
+#root{min-height:100vh}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:0 48px}
+@media (max-width:520px){.wrap{padding-inline:16px}}
+
+/* auth */
+.auth{min-height:100vh;display:grid;place-items:center;padding-inline:16px;padding-block:32px;position:relative}
+.auth-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:28px 26px}
+.auth-card h1{font-family:var(--font-display);font-size:22px;margin:0 0 2px}
+.auth-card h2{font-family:var(--font-display);font-size:17px;margin:18px 0 6px}
+.auth-card p{color:var(--fg-2);margin:0 0 14px}
+.auth-card form{display:flex;flex-direction:column;gap:12px}
+.auth-card .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.auth-theme{position:absolute;top:16px;right:16px}
+.otp-input{font-family:var(--font-mono);font-size:28px;letter-spacing:.5em;text-align:center;padding:10px 8px}
+.msg{font-size:13px;padding:9px 12px;border-radius:var(--r)}
+.msg.err{background:var(--crit-soft);color:var(--fg)}
+.msg.ok{background:var(--accent-soft);color:var(--fg)}
+.msg.info{background:var(--warn-soft);color:var(--fg)}
+.linkbtn{all:unset;color:var(--accent);cursor:pointer;font-size:13px;text-decoration:underline}
+.linkbtn:focus-visible{outline:2px solid var(--accent)}
+.linkbtn[aria-disabled="true"]{color:var(--fg-3);cursor:default;text-decoration:none}
+
+/* app chrome */
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:14px 10px}
+h1.brand{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.sub{color:var(--fg-2);font-size:13px}
+.spacer{flex:1}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--fg-2);flex-wrap:wrap}
+.who b{color:var(--fg)}
+.role{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--fg)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs a{padding:8px 14px;color:var(--fg-2);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding-block:14px}
+.filters label{font-size:12px;color:var(--fg-2);display:flex;align-items:center;gap:6px}
+select,input,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px}
+textarea{width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px}
+input[type=search]{min-width:200px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;font-weight:500}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ghost{background:transparent}
+button.danger{color:var(--crit);border-color:var(--crit)}
+button:disabled{opacity:.5;cursor:default}
+.theme-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font-size:13px}
+.theme-toggle svg{width:16px;height:16px;display:block}
+section.block{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;min-width:0}
+section.block h2{font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 4px;text-wrap:balance}
+section.block .lead{color:var(--fg-2);margin:0 0 14px;max-width:72ch}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr))}
+.stack{display:flex;flex-direction:column;gap:16px}
+main.stack{padding-top:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tile{background:var(--surface);padding:12px 14px}
+.tile .k{font-size:12px;color:var(--fg-2)}
+.tile .v{font-family:var(--font-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .n{font-size:12px;color:var(--fg-3)}
+.num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-2);font-weight:600;white-space:nowrap;background:var(--surface)}
+td.r,th.r{text-align:right}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--surface-2);color:var(--fg)}
+.muted{color:var(--fg-3)}
+.small{font-size:12px}
+.empty{padding:22px;border:1px dashed var(--line);border-radius:var(--r);color:var(--fg-2);text-align:center}
+.banner{padding:10px 14px;border-radius:var(--r);background:var(--warn-soft);color:var(--fg);margin-top:14px;font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px 16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field span{font-size:12px;color:var(--fg-2)}
+.field input,.field select,.field textarea{width:100%}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
