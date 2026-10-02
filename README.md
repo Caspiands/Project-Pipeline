@@ -115,7 +115,7 @@ Never put the **service-role** key anywhere in the front end, the repo or Vercel
 
 1. **Supabase project** in the Singapore region. Apply the migration and seed (`supabase link --project-ref …` then `supabase db push`, or paste the files into the SQL Editor). Set the Auth options listed in `CURSOR_PROMPT.md` section 9: sign-ups off, email confirmations on, minimum password length 10, leaked-password protection on, Site URL and redirect URLs limited to the app's domains, custom SMTP.
 2. **Edge Functions**: fill `supabase/functions/.env`, set the secrets, then `supabase functions deploy mfa-send`, `mfa-verify` and `admin-invite`.
-3. **Front end on Vercel**: import the repo, framework "Vite", build command `npm run build`, output `dist/`. Add the two `VITE_` variables. Security headers are added in a later phase.
+3. **Front end on Vercel**: import the repo, framework "Vite", build command `npm run build`, output `dist/`. `vercel.json` rewrites all routes to `index.html` for client-side routing. Set `VITE_SUPABASE_URL` to `https://imcwrdhyfwgzcecrhvwj.supabase.co` and `VITE_SUPABASE_ANON_KEY` to the project's publishable (anon) key in **Environment Variables** for Production (the build fails if either is missing or points at localhost). Security headers are added in a later phase.
 4. **Scheduled clean-up**: with pg_cron enabled, `select cron.schedule('purge-mfa', '17 3 * * *', 'select public.purge_mfa_rows()');`.
 
 `SETUP_GUIDE.md` walks through the same steps in more detail for a non-developer.
