@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
-import { BoardLayout } from '@/components/BoardLayout'
 import { RequireVerified } from '@/components/RequireVerified'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ResetPage } from '@/pages/auth/ResetPage'
@@ -28,22 +27,17 @@ export const routes: RouteObject[] = [
     element: <RequireVerified />,
     children: [
       {
-        element: <BoardLayout />,
+        element: <AppShell />,
         children: [
-          {
-            element: <AppShell />,
-            children: [
-              { path: '/', element: <Navigate to="/overview" replace /> },
-              { path: '/overview', element: <OverviewPage /> },
-              { path: '/pipeline', element: <PipelinePage /> },
-              { path: '/review', element: <ReviewPage /> },
-              { path: '/prospects', element: <ProspectsPage /> },
-              { path: '/targets', element: <TargetsPage /> },
-              { path: '/team', element: <TeamPage /> },
-              { path: '/audit', element: <AuditPage /> },
-              { path: '*', element: <NotFoundPage /> },
-            ],
-          },
+          { path: '/', element: <Navigate to="/overview" replace /> },
+          { path: '/overview', element: <OverviewPage /> },
+          { path: '/pipeline', element: <PipelinePage /> },
+          { path: '/review', element: <ReviewPage /> },
+          { path: '/prospects', element: <ProspectsPage /> },
+          { path: '/targets', element: <TargetsPage /> },
+          { path: '/team', element: <TeamPage /> },
+          { path: '/audit', element: <AuditPage /> },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
     ],

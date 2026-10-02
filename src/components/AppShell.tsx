@@ -1,9 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { FilterBar } from './FilterBar'
+import { IdleTimeoutGuard } from './IdleTimeoutGuard'
+import { OpportunityDrawer } from './OpportunityDrawer'
 import { ThemeToggle } from './ThemeToggle'
+import { Toast } from './Toast'
 import { useAuth } from '@/lib/auth/auth'
 import { useProfile } from '@/lib/auth/useProfile'
-import { useBoard } from '@/lib/board/BoardProvider'
+import { BoardProvider, useBoard } from '@/lib/board/BoardProvider'
 import { fmtTime } from '@/lib/format'
 
 export const TABS = [
@@ -20,7 +23,19 @@ export const TABS = [
  * The board's frame: sticky top bar with brand, who is signed in, and the tabs.
  * Rendered only inside RequireVerified, so there is always a verified session here.
  */
+/** Verified board chrome: provider wraps every child that calls useBoard (including Toast). */
 export function AppShell() {
+  return (
+    <BoardProvider>
+      <IdleTimeoutGuard />
+      <AppShellFrame />
+      <OpportunityDrawer />
+      <Toast />
+    </BoardProvider>
+  )
+}
+
+function AppShellFrame() {
   const auth = useAuth()
   const board = useBoard()
   const navigate = useNavigate()
