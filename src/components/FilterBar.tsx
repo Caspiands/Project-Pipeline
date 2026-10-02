@@ -2,6 +2,7 @@ import { useLocation } from 'react-router-dom'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { filterOpportunities } from '@/lib/board/filters'
 import { activePeople } from '@/lib/board/names'
+import { fmtInt } from '@/lib/format'
 import { STAGES } from '@/lib/stages'
 
 const HIDE_ON = ['/targets', '/prospects', '/team', '/audit']
@@ -75,7 +76,7 @@ export function FilterBar() {
         </>
       )}
       <span className="small muted" data-testid="filter-count">
-        {data.opps.length ? `${matchCount} of ${data.opps.length} opportunities match` : ''}
+        {data.opps.length ? `${fmtInt(matchCount)} of ${fmtInt(data.opps.length)} opportunities match` : ''}
       </span>
     </div>
   )

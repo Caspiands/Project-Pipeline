@@ -5,6 +5,7 @@ import { prospectSortKey } from '@/lib/board/filters'
 import { activePeople, personName } from '@/lib/board/names'
 import { parseProspectPaste } from '@/lib/board/prospectImport'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
+import { fmtInt } from '@/lib/format'
 import { PROSPECT_STATUSES } from '@/lib/stages'
 
 export function ProspectsPage() {
@@ -100,10 +101,10 @@ export function ProspectsPage() {
         ) : null}
         <div className="legend">
           {counts.map(({ s, c }) => (
-            <span key={s.key}><b className={`dot ${s.key}`} />{s.label} <b className="mono">{c}</b></span>
+            <span key={s.key}><b className={`dot ${s.key}`} />{s.label} <b className="mono">{fmtInt(c)}</b></span>
           ))}
-          <span>Moved to pipeline <b className="mono">{moved}</b></span>
-          <span>Total <b className="mono">{ps.length}</b></span>
+          <span>Moved to pipeline <b className="mono">{fmtInt(moved)}</b></span>
+          <span>Total <b className="mono">{fmtInt(ps.length)}</b></span>
         </div>
         <div className="toolbar" style={{ marginTop: 12 }}>
           <label>

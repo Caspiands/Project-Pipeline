@@ -10,7 +10,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import type { RefObject } from 'react'
 import { personName } from '@/lib/board/names'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
-import { fmtDate, fmtFull, fmtMonth, fmtRM, num } from '@/lib/format'
+import { fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num } from '@/lib/format'
 
 function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: number; innerRef?: RefObject<HTMLElement> }) {
   const H = 86
@@ -113,16 +113,16 @@ export function OverviewPageContent() {
                 <text x={0} y={y + 20} fill="var(--fg)">{d.s}</text>
                 <rect x={lx} y={y + 6} width={bw} height={20} fill="var(--surface-2)" />
                 <rect x={lx} y={y + 6} width={Math.max(d.v ? 2 : 0, w)} height={20} fill="var(--accent)" fillOpacity={op}>
-                  <title>{d.s}: {d.c} opportunities, {fmtRM(d.v)}</title>
+                  <title>{d.s}: {fmtInt(d.c)} opportunities, {fmtRM(d.v)}</title>
                 </rect>
                 <text x={lx + bw + 10} y={y + 20} fill="var(--fg)" className="t-mono">{fmtRM(d.v)}</text>
-                <text x={funnelW} y={y + 20} fill="var(--fg-2)" textAnchor="end" className="t-mono">{d.c} {d.c === 1 ? 'deal' : 'deals'}</text>
+                <text x={funnelW} y={y + 20} fill="var(--fg-2)" textAnchor="end" className="t-mono">{fmtInt(d.c)} {d.c === 1 ? 'deal' : 'deals'}</text>
               </g>
             )
           })}
         </svg>
         <p className="small muted" style={{ margin: '10px 0 0' }}>
-          Lost: {funnel.lost.length} {funnel.lost.length === 1 ? 'deal' : 'deals'}, {fmtRM(funnel.lost.reduce((a, o) => a + num(o.value), 0))}.
+          Lost: {fmtInt(funnel.lost.length)} {funnel.lost.length === 1 ? 'deal' : 'deals'}, {fmtRM(funnel.lost.reduce((a, o) => a + num(o.value), 0))}.
         </p>
       </section>
       <section className="block" ref={invoiceRef}>
@@ -144,7 +144,7 @@ export function OverviewPageContent() {
                 </rect>
                 <text x={cx} y={base - ha - hb - 7} textAnchor="middle" fill="var(--fg)" className="t-mono">{d.a + d.b ? fmtRM(d.a + d.b) : ''}</text>
                 <text x={cx} y={base + 18} textAnchor="middle" fill="var(--fg-2)">{fmtMonth(d.m)}</text>
-                <text x={cx} y={base + 34} textAnchor="middle" fill="var(--fg-3)" fontSize={11}>{d.c ? `${d.c} rows` : ''}</text>
+                <text x={cx} y={base + 34} textAnchor="middle" fill="var(--fg-3)" fontSize={11}>{d.c ? `${fmtInt(d.c)} rows` : ''}</text>
               </g>
             )
           })}
@@ -157,7 +157,7 @@ export function OverviewPageContent() {
           <span><i style={{ opacity: 0.32 }} />Later-year work</span>
         </div>
         <p className="small muted" style={{ margin: '8px 0 0' }}>
-          {invoices.none} open or invoiced {invoices.none === 1 ? 'row has' : 'rows have'} no expected invoice month.
+          {fmtInt(invoices.none)} open or invoiced {invoices.none === 1 ? 'row has' : 'rows have'} no expected invoice month.
         </p>
       </section>
       <section className="block">
@@ -185,10 +185,10 @@ export function OverviewPageContent() {
                     <td className="r num">{x.com != null ? fmtFull(x.com) : '—'}</td>
                     <td className="r num">{fmtFull(x.tr)}</td>
                     <td className="r num">{fmtFull(x.sec)}</td>
-                    <td className="r num">{x.oc}</td>
+                    <td className="r num">{fmtInt(x.oc)}</td>
                     <td className="r num">{fmtFull(x.ov)}</td>
-                    <td className={`r num${x.od ? ' overdue' : ''}`}>{x.od}</td>
-                    <td className="r num">{x.nn}</td>
+                    <td className={`r num${x.od ? ' overdue' : ''}`}>{fmtInt(x.od)}</td>
+                    <td className="r num">{fmtInt(x.nn)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,7 +1,7 @@
 /**
  * Overview and target calculations — ported from the prototype so numbers match demo mode.
  */
-import { fmtRM, monthKey, num, todayISO } from '@/lib/format'
+import { fmtInt, fmtRM, monthKey, num, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage, STAGES } from '@/lib/stages'
 import { filterOpportunities, isOverdue } from './filters'
 import type { BoardData, BoardFilters, Opportunity } from './types'
@@ -59,14 +59,14 @@ export function computeTiles(data: BoardData, filters: BoardFilters) {
     {
       k: 'Open pipeline',
       v: fmtRM(sum(open)),
-      n: `${open.length} opportunities${noVal ? `, ${noVal} with no value` : ''}`,
+      n: `${fmtInt(open.length)} opportunities${noVal ? `, ${fmtInt(noVal)} with no value` : ''}`,
     },
-    { k: 'LOA / PO in hand', v: fmtRM(sum(st('LOA/PO'))), n: `${st('LOA/PO').length} opportunities` },
-    { k: 'Verbal yes, no LOA', v: fmtRM(sum(st('Verbal yes'))), n: `${st('Verbal yes').length} opportunities` },
+    { k: 'LOA / PO in hand', v: fmtRM(sum(st('LOA/PO'))), n: `${fmtInt(st('LOA/PO').length)} opportunities` },
+    { k: 'Verbal yes, no LOA', v: fmtRM(sum(st('Verbal yes'))), n: `${fmtInt(st('Verbal yes').length)} opportunities` },
     {
       k: 'Invoiced, not paid',
       v: fmtRM(sum(r.filter((o) => o.stage === 'Invoiced'))),
-      n: `${r.filter((o) => o.stage === 'Invoiced').length} opportunities`,
+      n: `${fmtInt(r.filter((o) => o.stage === 'Invoiced').length)} opportunities`,
     },
     {
       k: 'Next steps overdue',

@@ -32,19 +32,28 @@ export function daysSince(iso: string | null | undefined, now: Date = new Date()
   return Math.floor((now.getTime() - t.getTime()) / 864e5)
 }
 
-/** Summary money: RM 262K, RM 1.50m, RM 800. Dash when unknown. */
-export function fmtRM(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return '—'
-  const a = Math.abs(n)
-  if (a >= 1e6) return 'RM ' + (n / 1e6).toFixed(2) + 'm'
-  if (a >= 1e3) return 'RM ' + Math.round(n / 1e3).toLocaleString('en-MY') + 'K'
-  return 'RM ' + Math.round(n).toLocaleString('en-MY')
+function formatAmount(n: number): string {
+  return n.toLocaleString('en-GB', { maximumFractionDigits: 2, minimumFractionDigits: 0 })
 }
 
-/** Table money: 262,000. Dash when unknown. */
+/** Money with RM prefix: RM 262,000, RM 1,500,000. Dash when unknown. */
+export function fmtRM(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return 'RM ' + formatAmount(n)
+}
+
+/** Table money (no prefix): 262,000. Dash when blank; never turns null into zero. */
 export function fmtFull(n: number | string | null | undefined): string {
   if (n == null || n === '') return '—'
-  return Number(n).toLocaleString('en-MY')
+  const x = Number(n)
+  if (Number.isNaN(x)) return '—'
+  return formatAmount(x)
+}
+
+/** Counts and other whole numbers: 1,500. Dash when unknown. */
+export function fmtInt(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return Math.round(n).toLocaleString('en-GB')
 }
 
 /** 7 Oct 2026 (en-GB). Dash when unknown. */

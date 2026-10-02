@@ -5,7 +5,7 @@ import { lastReviewAt } from '@/lib/board/calculations'
 import { filterOpportunities, isOverdue } from '@/lib/board/filters'
 import { personName, profileName } from '@/lib/board/names'
 import { TECH_BOARD_URL } from '@/lib/board/types'
-import { daysSince, fmtDate, fmtRM, todayISO } from '@/lib/format'
+import { daysSince, fmtDate, fmtInt, fmtRM, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage } from '@/lib/stages'
 import type { Opportunity } from '@/lib/board/types'
 
@@ -79,16 +79,16 @@ export function ReviewPage() {
       </section>
       <div className="grid g2">
         <section className="block">
-          <h2>Overdue next steps ({lists.od.length})</h2>
+          <h2>Overdue next steps ({fmtInt(lists.od.length)})</h2>
           <p className="lead">Open rows past their next-step date, oldest first.</p>
           {list(
             lists.od,
-            (o) => item(o, <><span className="overdue">{daysSince(o.nextDate)} days overdue</span> · {o.nextStep || ''}</>),
+            (o) => item(o, <><span className="overdue">{fmtInt(daysSince(o.nextDate))} days overdue</span> · {o.nextStep || ''}</>),
             'Nothing overdue.',
           )}
         </section>
         <section className="block">
-          <h2>Moved stage since the review ({lists.moved.length})</h2>
+          <h2>Moved stage since the review ({fmtInt(lists.moved.length)})</h2>
           <p className="lead">Every stage change, logged by the database.</p>
           {lists.moved.length ? (
             <ul className="list">
@@ -107,17 +107,17 @@ export function ReviewPage() {
           )}
         </section>
         <section className="block">
-          <h2>Added since the review ({lists.added.length})</h2>
+          <h2>Added since the review ({fmtInt(lists.added.length)})</h2>
           <p className="lead">New opportunities logged after the last review.</p>
           {list(lists.added, (o) => item(o, `${o.stage} · added ${fmtDate(o.createdAt)}`), 'Nothing new has been added.')}
         </section>
         <section className="block">
-          <h2>Open and not updated since the review ({lists.stale.length})</h2>
+          <h2>Open and not updated since the review ({fmtInt(lists.stale.length)})</h2>
           <p className="lead">Open rows no one has touched since the last review.</p>
           {list(lists.stale, (o) => item(o, `${o.stage} · last updated ${fmtDate(o.updatedAt)}`), 'Every open row has been updated.')}
         </section>
         <section className="block">
-          <h2>Starting in the next 60 days ({lists.soon.length})</h2>
+          <h2>Starting in the next 60 days ({fmtInt(lists.soon.length)})</h2>
           <p className="lead">
             Verbal yes, LOA or won work with a delivery start date before {fmtDate(lists.lim)}. Delivery plans live on the{' '}
             <a href={TECH_BOARD_URL} target="_blank" rel="noopener noreferrer">CDS Tech Projects Board</a>.
@@ -125,7 +125,7 @@ export function ReviewPage() {
           {list(lists.soon, (o) => item(o, `starts ${fmtDate(o.startDate)}`), 'No dated starts in the next 60 days.')}
         </section>
         <section className="block">
-          <h2>Verbal yes or LOA with no start date ({lists.noStart.length})</h2>
+          <h2>Verbal yes or LOA with no start date ({fmtInt(lists.noStart.length)})</h2>
           <p className="lead">Delivery cannot plan resources for these until a start date is set.</p>
           {list(lists.noStart, (o) => item(o, o.stage), 'Every confirmed row has a start date.')}
         </section>

@@ -6,7 +6,7 @@ import { isOverdue } from '@/lib/board/filters'
 import { personName, profileName } from '@/lib/board/names'
 import { downloadCsv, opportunitiesToCsv, pipelineTotal } from '@/lib/board/pipelineCsv'
 import { parsePipelineCsv } from '@/lib/board/pipelineImport'
-import { daysSince, fmtDate, fmtFull, fmtMonth } from '@/lib/format'
+import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth } from '@/lib/format'
 import { stageIndex } from '@/lib/stages'
 import type { Opportunity } from '@/lib/board/types'
 
@@ -128,7 +128,7 @@ export function PipelinePage() {
         </p>
         <div className="toolbar" style={{ flexWrap: 'wrap', gap: 12 }}>
           <button type="button" className="primary" onClick={exportCsv}>
-            Download filtered CSV ({rows.length} {rows.length === 1 ? 'row' : 'rows'})
+            Download filtered CSV ({fmtInt(rows.length)} {rows.length === 1 ? 'row' : 'rows'})
           </button>
           {canWrite && (
             <label className="field" style={{ margin: 0 }}>
@@ -146,7 +146,7 @@ export function PipelinePage() {
           <div className="block" style={{ marginTop: 16, padding: 12, border: '1px solid var(--line)' }}>
             <p className="small muted">
               File: <b>{importFileName || 'upload'}</b>
-              {parsedImport.skippedBlank ? ` · ${parsedImport.skippedBlank} blank row(s) skipped` : null}
+              {parsedImport.skippedBlank ? ` · ${fmtInt(parsedImport.skippedBlank)} blank row(s) skipped` : null}
             </p>
             {parsedImport.errors.length > 0 && (
               <div role="alert" className="small" style={{ color: 'var(--danger)', whiteSpace: 'pre-wrap' }}>
@@ -156,7 +156,7 @@ export function PipelinePage() {
             {parsedImport.rows.length > 0 && (
               <>
                 <p>
-                  <b>{parsedImport.rows.length}</b> {parsedImport.rows.length === 1 ? 'row' : 'rows'} ready to import
+                  <b>{fmtInt(parsedImport.rows.length)}</b> {parsedImport.rows.length === 1 ? 'row' : 'rows'} ready to import
                   {parsedImport.errors.length ? ' · some rows were skipped because of errors' : ''}.
                 </p>
                 <div className="scroll">
@@ -174,7 +174,7 @@ export function PipelinePage() {
                     <tbody>
                       {previewRows.map((r) => (
                         <tr key={r.lineNumber}>
-                          <td>{r.lineNumber}</td>
+                          <td>{fmtInt(r.lineNumber)}</td>
                           <td>{r.input.account}</td>
                           <td>{r.input.item}</td>
                           <td>{r.input.stage}</td>
@@ -186,7 +186,7 @@ export function PipelinePage() {
                   </table>
                 </div>
                 {parsedImport.rows.length > previewRows.length && (
-                  <p className="small muted">Showing the first {previewRows.length} rows.</p>
+                  <p className="small muted">Showing the first {fmtInt(previewRows.length)} rows.</p>
                 )}
                 <div className="row" style={{ marginTop: 12, gap: 8 }}>
                   <button
@@ -195,7 +195,7 @@ export function PipelinePage() {
                     disabled={importBusy || parsedImport.rows.length === 0}
                     onClick={() => void confirmImport()}
                   >
-                    {importBusy ? 'Importing…' : `Confirm import of ${parsedImport.rows.length} rows`}
+                    {importBusy ? 'Importing…' : `Confirm import of ${fmtInt(parsedImport.rows.length)} rows`}
                   </button>
                   <button type="button" onClick={clearImport} disabled={importBusy}>Cancel</button>
                 </div>
@@ -271,7 +271,7 @@ export function PipelinePage() {
                       <td className="r num">{fmtFull(o.value)}</td>
                       <td className="r num">{o.revenueYear || '—'}</td>
                       <td className="num">{fmtDate(o.quoteDate)}</td>
-                      <td className="r num">{d == null ? '—' : d}</td>
+                      <td className="r num">{d == null ? '—' : fmtInt(d)}</td>
                       <td className="num">{fmtMonth(o.invoiceMonth)}</td>
                       <td style={{ minWidth: 180 }}>
                         {o.nextStep || '—'}
@@ -290,7 +290,7 @@ export function PipelinePage() {
             {rows.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={5} className="small muted">{rows.length} rows</td>
+                  <td colSpan={5} className="small muted">{fmtInt(rows.length)} rows</td>
                   <td className="r num"><b>{fmtFull(total)}</b></td>
                   <td colSpan={COLS.length - 6} />
                 </tr>

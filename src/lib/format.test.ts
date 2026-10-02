@@ -1,17 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { daysSince, fmtDate, fmtFull, fmtMonth, fmtRM, num, todayISO } from './format'
+import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num, todayISO } from './format'
 
-describe('fmtRM (summary money)', () => {
-  it('shows thousands as K and millions with two decimals', () => {
-    expect(fmtRM(262000)).toBe('RM 262K')
-    expect(fmtRM(1_500_000)).toBe('RM 1.50m')
-    expect(fmtRM(7_000_000)).toBe('RM 7.00m')
+describe('fmtRM (money on screen)', () => {
+  it('uses full amounts with en-GB grouping and an RM prefix', () => {
+    expect(fmtRM(262000)).toBe('RM 262,000')
+    expect(fmtRM(1_500_000)).toBe('RM 1,500,000')
     expect(fmtRM(800)).toBe('RM 800')
     expect(fmtRM(0)).toBe('RM 0')
   })
   it('shows a dash when the value is not known', () => {
     expect(fmtRM(null)).toBe('—')
     expect(fmtRM(undefined)).toBe('—')
+  })
+})
+
+describe('fmtInt (counts)', () => {
+  it('groups thousands with en-GB', () => {
+    expect(fmtInt(1500)).toBe('1,500')
+    expect(fmtInt(42)).toBe('42')
+  })
+  it('shows a dash when unknown', () => {
+    expect(fmtInt(null)).toBe('—')
   })
 })
 
