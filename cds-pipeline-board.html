@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CDS Pipeline Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<!--
+  CDS Pipeline Board: single-file prototype.
+  1. Fill CONFIG below with your Supabase project URL and anon (public) key.
+  2. Leave the placeholders as they are to run in DEMO MODE (sample data, any password, code 000000).
+  See README.md and CURSOR_PROMPT.md in this folder for the full system.
+-->
+<style>
+/* Layout: a working ledger. Sticky header + tabs, filter strip, then each tab's sections stacked; the pipeline table is the core record. */
+:root{
+  --bg:#f4f6f4; --surface:#ffffff; --surface-2:#eaefec; --line:#d5ddd8;
+  --fg:#16201b; --fg-2:#56645d; --fg-3:#7d8a84;
+  --accent:#1c6a55; --accent-ink:#ffffff; --accent-soft:#d5ebe2;
+  --warn:#9a5a06; --warn-soft:#fbecd5; --crit:#b3261e; --crit-soft:#f8dedb;
+  --p-white:#ffffff; --p-orange:#e8892b; --p-yellow:#e6c229; --p-green:#3f9b5a;
+  --font-display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --r:6px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1412; --surface:#151c19; --surface-2:#1c2521; --line:#2b3732;
+  --fg:#e4ebe7; --fg-2:#9fada6; --fg-3:#76847d;
+  --accent:#5ec4a5; --accent-ink:#0c1512; --accent-soft:#1d3a30;
+  --warn:#e3a64f; --warn-soft:#3a2b14; --crit:#f2877f; --crit-soft:#3d1d1a; --p-white:#d9dfdb; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1412; --surface:#151c19; --surface-2:#1c2521; --line:#2b3732;
+  --fg:#e4ebe7; --fg-2:#9fada6; --fg-3:#76847d;
+  --accent:#5ec4a5; --accent-ink:#0c1512; --accent-soft:#1d3a30;
+  --warn:#e3a64f; --warn-soft:#3a2b14; --crit:#f2877f; --crit-soft:#3d1d1a; --p-white:#d9dfdb; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+a{color:var(--accent)}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:0 48px}
+@media (max-width:520px){.wrap{padding-inline:16px}}
+/* auth */
+.auth{min-height:100vh;display:grid;place-items:center;padding-inline:16px;padding-block:32px}
+.auth-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:28px 26px}
+.auth-card h1{font-family:var(--font-display);font-size:22px;margin:0 0 2px}
+.auth-card h2{font-family:var(--font-display);font-size:17px;margin:18px 0 6px}
+.auth-card p{color:var(--fg-2);margin:0 0 14px}
+.auth-card form{display:flex;flex-direction:column;gap:12px}
+.auth-card .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.otp-input{font-family:var(--font-mono);font-size:28px;letter-spacing:.5em;text-align:center;padding:10px 8px}
+.msg{font-size:13px;padding:9px 12px;border-radius:var(--r)}
+.msg.err{background:var(--crit-soft);color:var(--fg)}
+.msg.ok{background:var(--accent-soft);color:var(--fg)}
+.msg.info{background:var(--warn-soft);color:var(--fg)}
+.linkbtn{all:unset;color:var(--accent);cursor:pointer;font-size:13px;text-decoration:underline}
+.linkbtn:focus-visible{outline:2px solid var(--accent)}
+.linkbtn[aria-disabled="true"]{color:var(--fg-3);cursor:default;text-decoration:none}
+/* app chrome */
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:14px 10px}
+h1.brand{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.sub{color:var(--fg-2);font-size:13px}
+.spacer{flex:1}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--fg-2);flex-wrap:wrap}
+.who b{color:var(--fg)}
+.role{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--fg)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs a{padding:8px 14px;color:var(--fg-2);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding-block:14px}
+.filters label{font-size:12px;color:var(--fg-2);display:flex;align-items:center;gap:6px}
+select,input,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px}
+textarea{width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px}
+input[type=search]{min-width:200px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;font-weight:500}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ghost{background:transparent}
+button.danger{color:var(--crit);border-color:var(--crit)}
+button:disabled{opacity:.5;cursor:default}
+section.block{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;min-width:0}
+section.block h2{font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 4px;text-wrap:balance}
+section.block .lead{color:var(--fg-2);margin:0 0 14px;max-width:72ch}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr))}
+.stack{display:flex;flex-direction:column;gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tile{background:var(--surface);padding:12px 14px}
+.tile .k{font-size:12px;color:var(--fg-2)}
+.tile .v{font-family:var(--font-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .n{font-size:12px;color:var(--fg-3)}
+.num,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.target-head{display:flex;flex-wrap:wrap;gap:6px 28px;align-items:baseline;margin-bottom:12px}
+.target-head .big{font-family:var(--font-mono);font-size:26px;font-weight:500}
+.target-head .lab{font-size:12px;color:var(--fg-2);display:block}
+svg{display:block;max-width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--font-body);font-size:12px}
+svg .t-mono{font-family:var(--font-mono)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg-2);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:2px;background:var(--accent);display:inline-block}
+.scroll{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-2);font-weight:600;white-space:nowrap;background:var(--surface)}
+th button{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+th button:focus-visible{outline:2px solid var(--accent)}
+td.r,th.r{text-align:right}
+td.num{white-space:nowrap}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--surface-2)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--surface-2);color:var(--fg)}
+.pill.s4,.pill.s5,.pill.s6{background:var(--accent-soft)}
+.pill.lost{color:var(--fg-3);text-decoration:line-through}
+.seg{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-2)}
+.overdue{color:var(--crit);font-weight:500}
+.muted{color:var(--fg-3)}
+.small{font-size:12px}
+.empty{padding:22px;border:1px dashed var(--line);border-radius:var(--r);color:var(--fg-2);text-align:center}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:9px 0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.list li:last-child{border-bottom:0}
+.list .what{font-weight:500;flex:1 1 260px;min-width:0}
+.list .meta{color:var(--fg-2);font-size:12px}
+.banner{padding:10px 14px;border-radius:var(--r);background:var(--warn-soft);color:var(--fg);margin-top:14px;font-size:13px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid var(--line);vertical-align:-1px}
+.dot.white{background:var(--p-white)}.dot.orange{background:var(--p-orange)}.dot.yellow{background:var(--p-yellow)}.dot.green{background:var(--p-green)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px 16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field span{font-size:12px;color:var(--fg-2)}
+.field input,.field select,.field textarea{width:100%}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:41;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer header{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.drawer header h3{font-family:var(--font-display);font-size:17px;margin:0;flex:1}
+.drawer form{overflow-y:auto;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.drawer .full{grid-column:1/-1}
+.drawer footer{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+@media (max-width:520px){.drawer form{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:var(--r);z-index:60;font-size:13px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ====================== AUTH ====================== -->
+<div class="auth" id="authView">
+  <div class="auth-card">
+    <h1>CDS Pipeline Board</h1>
+    <p class="small">Caspian Digital Solutions · staff only</p>
+    <div id="demoNote" class="msg info" hidden>Demo mode: not connected to Supabase. Any email and password work, and the code is <b class="mono">000000</b>. Changes disappear when you reload.</div>
+
+    <div data-step="signin">
+      <h2>Sign in</h2>
+      <form id="signinForm" novalidate>
+        <label class="field"><span>Work email</span><input id="si_email" type="email" autocomplete="username" required></label>
+        <label class="field"><span>Password</span><input id="si_password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit" id="si_btn">Continue</button>
+        <div class="row"><button type="button" class="linkbtn" data-go="forgot">Forgot password?</button><span class="small muted">Next: a code sent to your email</span></div>
+      </form>
+    </div>
+
+    <div data-step="otp" hidden>
+      <h2>Check your email</h2>
+      <p id="otpLead">We sent a 6-digit code to your email. It expires in 10 minutes.</p>
+      <form id="otpForm" novalidate>
+        <label class="field"><span>6-digit code</span><input id="otp_code" class="otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required></label>
+        <button class="primary" type="submit" id="otp_btn">Verify and open the board</button>
+        <div class="row"><button type="button" class="linkbtn" id="otp_resend">Send a new code</button><button type="button" class="linkbtn" id="otp_switch">Use a different account</button></div>
+      </form>
+    </div>
+
+    <div data-step="forgot" hidden>
+      <h2>Reset your password</h2>
+      <p>We'll email you a link to set a new password. You will still need a sign-in code afterwards.</p>
+      <form id="forgotForm" novalidate>
+        <label class="field"><span>Work email</span><input id="fp_email" type="email" autocomplete="username" required></label>
+        <button class="primary" type="submit" id="fp_btn">Email me a reset link</button>
+        <div class="row"><button type="button" class="linkbtn" data-go="signin">Back to sign in</button></div>
+      </form>
+    </div>
+
+    <div data-step="setpw" hidden>
+      <h2>Set your password</h2>
+      <p>Use at least 10 characters. Avoid a password you use elsewhere.</p>
+      <form id="setpwForm" novalidate>
+        <label class="field"><span>New password</span><input id="sp_pw" type="password" autocomplete="new-password" minlength="10" required></label>
+        <label class="field"><span>Repeat new password</span><input id="sp_pw2" type="password" autocomplete="new-password" minlength="10" required></label>
+        <button class="primary" type="submit" id="sp_btn">Save password</button>
+      </form>
+    </div>
+
+    <div id="authMsg" style="margin-top:14px" hidden></div>
+  </div>
+</div>
+
+<!-- ====================== APP ====================== -->
+<div id="appView" hidden>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div>
+        <h1 class="brand">CDS Pipeline Board</h1>
+        <div class="sub">Whole company · values in RM · one row per opportunity</div>
+      </div>
+      <span class="spacer"></span>
+      <div class="who"><span id="whoName"></span><span class="role" id="whoRole"></span><span class="small" id="whoUntil"></span><button type="button" class="ghost" id="signOutBtn">Sign out</button></div>
+      <button class="primary" id="addBtn" type="button">Add opportunity</button>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#overview" data-tab="overview">Overview</a>
+      <a href="#pipeline" data-tab="pipeline">Pipeline</a>
+      <a href="#review" data-tab="review">Review</a>
+      <a href="#prospects" data-tab="prospects">Prospects</a>
+      <a href="#settings" data-tab="settings">Targets</a>
+      <a href="#team" data-tab="team" id="teamTab">Team &amp; access</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="banner"></div>
+  <div class="filters" id="filters">
+    <label>Segment <select id="fSeg"><option value="all">All</option><option>Tech</option><option>Agency</option><option>Mixed</option></select></label>
+    <label>Owner <select id="fOwner"></select></label>
+    <label>Revenue year <select id="fYear"><option value="all">All</option><option>2026</option><option>2027</option><option>2028</option></select></label>
+    <label><input type="search" id="fQ" placeholder="Search account, item, quote no."></label>
+    <span class="small muted" id="fCount"></span>
+  </div>
+
+  <main>
+    <div data-panel="overview" class="stack">
+      <section class="block" id="targetBlock"></section>
+      <div class="tiles" id="tiles"></div>
+      <div class="grid g2">
+        <section class="block" id="funnelBlock"></section>
+        <section class="block" id="invoiceBlock"></section>
+      </div>
+      <section class="block" id="ownerBlock"></section>
+    </div>
+
+    <div data-panel="pipeline" class="stack" hidden>
+      <section class="block">
+        <div class="toolbar">
+          <h2 style="flex:1;margin:0">Pipeline</h2>
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="fLost"> Show lost</label>
+          <label class="small">Stage <select id="fStage"><option value="all">All stages</option></select></label>
+        </div>
+        <div class="scroll"><table id="oppTable"></table></div>
+        <p class="small muted" style="margin:10px 0 0">Click a row to open it. Days in stage counts from the day the stage last changed.</p>
+      </section>
+    </div>
+
+    <div data-panel="review" class="stack" hidden>
+      <section class="block" id="reviewHead"></section>
+      <div class="grid g2" id="reviewGrid"></div>
+    </div>
+
+    <div data-panel="prospects" class="stack" hidden>
+      <section class="block" id="prospectHead"></section>
+      <section class="block">
+        <div class="toolbar">
+          <h2 style="flex:1;margin:0">Prospect list</h2>
+          <label class="small">Status <select id="pStatus"><option value="all">All</option></select></label>
+          <button type="button" id="pAddBtn">Add prospect</button>
+          <button type="button" id="pImportBtn">Paste from spreadsheet</button>
+        </div>
+        <div id="pImport" hidden style="margin-bottom:14px">
+          <p class="small muted" style="margin:0 0 6px">Copy rows from Excel or Google Sheets and paste them here. Columns in this order, or with these headers: Company, Contact, Designation, Phone, Email, Status (green / yellow / orange / white), Source.</p>
+          <textarea id="pImportText" aria-label="Rows to import"></textarea>
+          <div class="toolbar" style="margin-top:8px">
+            <label class="small">Owner <select id="pImportOwner"></select></label>
+            <label class="small">Source <input id="pImportSource" value="SSM convention, Aug 2026"></label>
+            <button type="button" class="primary" id="pImportGo">Import rows</button>
+            <span class="small muted" id="pImportMsg"></span>
+          </div>
+        </div>
+        <div id="pAdd" hidden style="margin-bottom:14px">
+          <div class="kv">
+            <label class="field"><span>Company</span><input id="pa_company"></label>
+            <label class="field"><span>Contact person</span><input id="pa_contact"></label>
+            <label class="field"><span>Designation</span><input id="pa_designation"></label>
+            <label class="field"><span>Phone</span><input id="pa_phone"></label>
+            <label class="field"><span>Email</span><input id="pa_email" type="email"></label>
+            <label class="field"><span>Status</span><select id="pa_status"></select></label>
+            <label class="field"><span>Owner</span><select id="pa_owner"></select></label>
+          </div>
+          <div class="toolbar" style="margin-top:10px"><button type="button" class="primary" id="pAddGo">Save prospect</button></div>
+        </div>
+        <div class="scroll"><table id="pTable"></table></div>
+      </section>
+    </div>
+
+    <div data-panel="settings" class="stack" hidden>
+      <section class="block">
+        <h2>Company target</h2>
+        <p class="lead">The finance figure is revenue already booked for the year, as finance reports it. The board does not add invoiced rows on top of it, so update it after each month-end. Only admins can change these.</p>
+        <form id="setForm" class="kv">
+          <label class="field"><span>Target year</span><input id="st_year" type="number" min="2020" max="2100"></label>
+          <label class="field"><span>Annual target (RM)</span><input id="st_target" type="number" min="0" step="1000"></label>
+          <label class="field"><span>Finance-reported revenue to date (RM)</span><input id="st_fin" type="number" min="0" step="1000"></label>
+          <label class="field"><span>Finance figure as of</span><input id="st_asof" type="date"></label>
+          <div style="grid-column:1/-1"><button class="primary" type="submit" id="st_save">Save target</button></div>
+        </form>
+      </section>
+      <section class="block">
+        <h2>Committed revenue by person</h2>
+        <p class="lead" id="comLead"></p>
+        <div class="scroll"><table id="comTable"></table></div>
+        <div class="toolbar" style="margin-top:12px"><button class="primary" type="button" id="com_save">Save commitments</button></div>
+      </section>
+    </div>
+
+    <div data-panel="team" class="stack" hidden>
+      <section class="block">
+        <h2>Logins</h2>
+        <p class="lead">Everyone signs in with email and password, then a code sent to their email. Admins manage targets and access; editors add and update opportunities and prospects; viewers can only look.</p>
+        <div class="scroll"><table id="loginTable"></table></div>
+        <h2 style="margin-top:20px">Invite a colleague</h2>
+        <div class="kv" style="margin-top:8px">
+          <label class="field"><span>Work email</span><input id="inv_email" type="email"></label>
+          <label class="field"><span>Full name</span><input id="inv_name"></label>
+          <label class="field"><span>Role</span><select id="inv_role"><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></label>
+        </div>
+        <div class="toolbar" style="margin-top:10px"><button class="primary" type="button" id="inv_go">Send invite</button><span class="small muted" id="inv_msg"></span></div>
+      </section>
+      <section class="block">
+        <h2>Deal owners</h2>
+        <p class="lead">People who can own opportunities. An owner does not need a login; add their email to link them when they get one.</p>
+        <div class="scroll"><table id="peopleTable"></table></div>
+        <div class="kv" style="margin-top:12px">
+          <label class="field"><span>Name</span><input id="pp_name"></label>
+          <label class="field"><span>Email (optional)</span><input id="pp_email" type="email"></label>
+        </div>
+        <div class="toolbar" style="margin-top:10px"><button class="primary" type="button" id="pp_go">Add owner</button></div>
+      </section>
+    </div>
+  </main>
+</div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="dTitle" role="dialog" aria-modal="true">
+  <header><h3 id="dTitle">Opportunity</h3><button type="button" class="ghost" id="dClose">Close</button></header>
+  <form id="oppForm" autocomplete="off">
+    <label class="field"><span>Account</span><input id="o_account" required></label>
+    <label class="field"><span>Segment</span><select id="o_segment"><option>Tech</option><option>Agency</option><option>Mixed</option></select></label>
+    <label class="field full"><span>Item (what is being sold)</span><input id="o_item" required></label>
+    <label class="field"><span>Owner</span><select id="o_owner"></select></label>
+    <label class="field"><span>Stage</span><select id="o_stage"></select></label>
+    <label class="field"><span>Value (RM)</span><input id="o_value" type="number" min="0" step="100" placeholder="Leave blank if not known"></label>
+    <label class="field"><span>Revenue year</span><select id="o_year"><option>2026</option><option>2027</option><option>2028</option></select></label>
+    <label class="field"><span>Quote no.</span><input id="o_quoteNo"></label>
+    <label class="field"><span>Quote sent</span><input id="o_quoteDate" type="date"></label>
+    <label class="field"><span>LOA / PO received</span><input id="o_loaDate" type="date"></label>
+    <label class="field"><span>Expected invoice month</span><input id="o_invoiceMonth" type="month"></label>
+    <label class="field"><span>Expected delivery start</span><input id="o_startDate" type="date"></label>
+    <label class="field"><span>Probability % (optional)</span><input id="o_prob" type="number" min="0" max="100" step="5"></label>
+    <label class="field full"><span>Next step</span><input id="o_nextStep"></label>
+    <label class="field"><span>Next step owner</span><select id="o_nextOwner"></select></label>
+    <label class="field"><span>Next step date</span><input id="o_nextDate" type="date"></label>
+    <label class="field full"><span>Link (Jira, proposal, Tech Projects Board)</span><input id="o_link" type="url" placeholder="https://"></label>
+    <label class="field full"><span>Notes</span><textarea id="o_notes" style="min-height:80px;font-family:var(--font-body);font-size:13px"></textarea></label>
+    <div class="full small muted" id="o_meta"></div>
+  </form>
+  <footer>
+    <button type="submit" form="oppForm" class="primary" id="o_save">Save</button>
+    <button type="button" id="o_cancel">Cancel</button>
+    <span class="spacer"></span>
+    <button type="button" class="danger" id="o_delete">Delete</button>
+    <button type="button" class="danger" id="o_deleteConfirm" hidden>Confirm delete</button>
+  </footer>
+</aside>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* =====================================================================
+   CONFIG: paste your Supabase values here (Project Settings > API).
+   The anon key is safe in the browser; the database rules protect the data.
+   Never put the service_role key in this file.
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: 'https://YOUR-PROJECT.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR-ANON-KEY',
+  TECH_BOARD_URL: 'https://claude.ai/artifact/WM8QSCNFVFuy5P88C7D5Bv'
+};
+
+(function(){
+'use strict';
+const DEMO = /YOUR-PROJECT|YOUR-ANON/.test(CONFIG.SUPABASE_URL + CONFIG.SUPABASE_ANON_KEY) || !window.supabase;
+const LINK_TYPE = new URLSearchParams(location.hash.slice(1)).get('type'); // invite | recovery from Supabase email links
+
+const STAGES=['Lead','Proposal','Quote sent','Verbal yes','LOA/PO','Invoiced','Paid','Lost'];
+const OPEN=['Lead','Proposal','Quote sent','Verbal yes','LOA/PO'];
+const WON=['Invoiced','Paid'];
+const PSTATUS=[{k:'white',label:'Not contacted'},{k:'orange',label:'Needs work'},{k:'yellow',label:'Interested, budget limited'},{k:'green',label:'Ready to meet'}];
+const TABS=['overview','pipeline','review','prospects','settings','team'];
+
+/* ---------- utilities ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const parseD=iso=>new Date(iso&&iso.length===10?iso+'T00:00:00':iso);
+const daysSince=iso=>{if(!iso)return null;const t=parseD(iso);return isNaN(t)?null:Math.floor((Date.now()-t.getTime())/864e5)};
+const fmtRM=n=>{if(n==null||n==='')return '—';const a=Math.abs(n);if(a>=1e6)return 'RM '+(n/1e6).toFixed(2)+'m';if(a>=1e3)return 'RM '+Math.round(n/1e3).toLocaleString('en-MY')+'K';return 'RM '+Math.round(n).toLocaleString('en-MY')};
+const fmtFull=n=>(n==null||n==='')?'—':Number(n).toLocaleString('en-MY');
+const fmtDate=iso=>{if(!iso)return '—';const d=parseD(iso);return isNaN(d)?'—':d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
+const fmtTime=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})};
+const fmtMonth=m=>{if(!m)return '—';const [y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'})};
+const num=v=>(v==null||v==='')?0:Number(v)||0;
+const stageIdx=s=>STAGES.indexOf(s);
+const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)}));
+const widthOf=id=>{const e=$(id);const w=e?e.clientWidth-40:0;return Math.max(300,Math.round(w||720))};
+function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.hidden=true},2800)}
+function store(k,v){try{localStorage.setItem('cdspb.'+k,JSON.stringify(v))}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem('cdspb.'+k);return v?JSON.parse(v):d}catch(e){return d}}
+function ss(k,v){try{if(v===undefined)return sessionStorage.getItem(k);sessionStorage.setItem(k,v)}catch(e){return null}}
+function jwtPayload(t){try{const p=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(p.padEnd(Math.ceil(p.length/4)*4,'=')))}catch(e){return {}}}
+
+/* =====================================================================
+   BACKENDS: same interface for Supabase and demo mode
+   ===================================================================== */
+const mapOpp=r=>({id:r.id,account:r.account,item:r.item,segment:r.segment,ownerId:r.owner_id||null,stage:r.stage,value:r.value==null?null:Number(r.value),
+  revenueYear:r.revenue_year,quoteNo:r.quote_no||'',quoteDate:r.quote_date,loaDate:r.loa_date,invoiceMonth:r.invoice_month?String(r.invoice_month).slice(0,7):null,
+  startDate:r.start_date,probability:r.probability,nextStep:r.next_step||'',nextOwnerId:r.next_owner_id||null,nextDate:r.next_date,link:r.link||'',notes:r.notes||'',
+  stageSince:r.stage_since,createdAt:r.created_at,createdBy:r.created_by,updatedAt:r.updated_at,updatedBy:r.updated_by});
+const unmapOpp=o=>({account:o.account,item:o.item,segment:o.segment,owner_id:o.ownerId||null,stage:o.stage,value:o.value,revenue_year:o.revenueYear,
+  quote_no:o.quoteNo||null,quote_date:o.quoteDate||null,loa_date:o.loaDate||null,invoice_month:o.invoiceMonth?o.invoiceMonth+'-01':null,start_date:o.startDate||null,
+  probability:o.probability,next_step:o.nextStep||null,next_owner_id:o.nextOwnerId||null,next_date:o.nextDate||null,link:o.link||null,notes:o.notes||null});
+const mapPros=r=>({id:r.id,company:r.company,contactName:r.contact_name||'',designation:r.designation||'',phone:r.phone||'',email:r.email||'',status:r.status||'white',
+  ownerId:r.owner_id||null,source:r.source||'',notes:r.notes||'',opportunityId:r.opportunity_id||null,createdAt:r.created_at,updatedAt:r.updated_at});
+const unmapPros=p=>({company:p.company,contact_name:p.contactName||null,designation:p.designation||null,phone:p.phone||null,email:p.email||null,status:p.status||'white',
+  owner_id:p.ownerId||null,source:p.source||null,notes:p.notes||null});
+
+function SupabaseBackend(){
+  const sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'implicit'}});
+  const fnError=async(error,fallback)=>{let b={};try{b=await error.context.json()}catch(_){}const e=new Error(b.error||fallback);Object.assign(e,b);return e};
+  const must=({data,error})=>{if(error)throw new Error(error.message);return data};
+  let channel=null;
+  return {
+    demo:false,
+    onAuth(cb){sb.auth.onAuthStateChange((ev,session)=>setTimeout(()=>cb(ev,session),0))},
+    async session(){const {data}=await sb.auth.getSession();return data.session},
+    async signIn(email,password){const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw new Error(/invalid login/i.test(error.message)?'That email and password do not match.':error.message)},
+    async signOut(){if(channel){sb.removeChannel(channel);channel=null}await sb.auth.signOut()},
+    async sendReset(email){const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(error)throw new Error(error.message)},
+    async setPassword(pw){const {error}=await sb.auth.updateUser({password:pw});if(error)throw new Error(error.message)},
+    async mfaStatus(){return must(await sb.rpc('my_mfa_status'))},
+    async sendCode(){const {data,error}=await sb.functions.invoke('mfa-send',{body:{}});if(error)throw await fnError(error,'Could not send the code.');return data},
+    async verifyCode(code){const {data,error}=await sb.functions.invoke('mfa-verify',{body:{code}});if(error)throw await fnError(error,'Could not check the code.');return data},
+    async invite(p){const {data,error}=await sb.functions.invoke('admin-invite',{body:p});if(error)throw await fnError(error,'Could not send the invite.');return data},
+    async loadAll(){
+      const [people,profiles,settings,commitments,opps,pros,reviews,hist]=await Promise.all([
+        sb.from('people').select('*').order('name'),
+        sb.from('profiles').select('id,email,full_name,role,is_active').order('email'),
+        sb.from('settings').select('*').eq('id',1).maybeSingle(),
+        sb.from('commitments').select('*'),
+        sb.from('opportunities').select('*').is('deleted_at',null),
+        sb.from('prospects').select('*'),
+        sb.from('reviews').select('*').order('reviewed_at',{ascending:false}).limit(20),
+        sb.from('stage_history').select('*').order('changed_at',{ascending:false}).limit(1000)]);
+      [people,profiles,settings,commitments,opps,pros,reviews,hist].forEach(r=>{if(r.error)throw new Error(r.error.message)});
+      const s=settings.data||{};
+      return {
+        people:people.data.map(r=>({id:r.id,name:r.name,email:r.email||'',profileId:r.profile_id,isActive:r.is_active})),
+        profiles:profiles.data.map(r=>({id:r.id,email:r.email,fullName:r.full_name||'',role:r.role,isActive:r.is_active})),
+        settings:{year:s.target_year||2026,target:num(s.annual_target),financeRevenue:num(s.finance_revenue),financeAsOf:s.finance_as_of||''},
+        commitments:commitments.data.map(r=>({personId:r.person_id,year:r.year,amount:num(r.amount)})),
+        opps:opps.data.map(mapOpp),prospects:pros.data.map(mapPros),
+        reviews:reviews.data.map(r=>({id:r.id,at:r.reviewed_at,by:r.reviewed_by,notes:r.notes})),
+        history:hist.data.map(r=>({oppId:r.opportunity_id,from:r.from_stage,to:r.to_stage,at:r.changed_at,by:r.changed_by}))};
+    },
+    subscribe(onChange){
+      if(channel)return;
+      let t;const bump=()=>{clearTimeout(t);t=setTimeout(onChange,250)};
+      channel=sb.channel('pipeline-board');
+      ['opportunities','prospects','settings','commitments','people','reviews','stage_history','profiles'].forEach(tb=>channel.on('postgres_changes',{event:'*',schema:'public',table:tb},bump));
+      channel.subscribe();
+    },
+    async saveOpp(o){const row=unmapOpp(o);if(o.id){must(await sb.from('opportunities').update(row).eq('id',o.id).select('id'));return o.id}
+      const d=must(await sb.from('opportunities').insert(row).select('id').single());return d.id},
+    async deleteOpp(id){must(await sb.from('opportunities').update({deleted_at:new Date().toISOString()}).eq('id',id).select('id'))},
+    async addProspects(list){for(let i=0;i<list.length;i+=200){must(await sb.from('prospects').insert(list.slice(i,i+200).map(unmapPros)))}},
+    async updateProspect(id,patch){const row={};if('status' in patch)row.status=patch.status;if('opportunityId' in patch)row.opportunity_id=patch.opportunityId;must(await sb.from('prospects').update(row).eq('id',id).select('id'))},
+    async saveSettings(s){must(await sb.from('settings').update({target_year:s.year,annual_target:s.target,finance_revenue:s.financeRevenue,finance_as_of:s.financeAsOf||null}).eq('id',1).select('id'))},
+    async saveCommitments(list){const up=list.filter(c=>c.amount!=null).map(c=>({person_id:c.personId,year:c.year,amount:c.amount}));const del=list.filter(c=>c.amount==null);
+      if(up.length)must(await sb.from('commitments').upsert(up));for(const c of del)must(await sb.from('commitments').delete().eq('person_id',c.personId).eq('year',c.year))},
+    async markReview(){must(await sb.from('reviews').insert({}).select('id'))},
+    async addPerson(p){must(await sb.from('people').insert({name:p.name,email:p.email||null}).select('id'))},
+    async updatePerson(id,patch){const row={};if('isActive' in patch)row.is_active=patch.isActive;if('email' in patch)row.email=patch.email||null;must(await sb.from('people').update(row).eq('id',id).select('id'))},
+    async updateProfile(id,patch){const row={};if('role' in patch)row.role=patch.role;if('isActive' in patch)row.is_active=patch.isActive;must(await sb.from('profiles').update(row).eq('id',id).select('id'))}
+  };
+}
+
+function DemoBackend(){
+  const now=new Date().toISOString();const SEED='2026-10-01T18:00:00+08:00';
+  const people=['Matthew','Bharg','Hafsham','Engsim','Phoebe','Priscilla'].map(n=>({id:uuid(),name:n,email:n==='Bharg'?'admin@caspiands.com':'',profileId:null,isActive:true}));
+  const pid=n=>people.find(p=>p.name===n).id;
+  const me={id:uuid(),email:'',fullName:'Demo admin',role:'admin',isActive:true};
+  const mk=(account,item,segment,owner,stage,value,year,extra)=>Object.assign({id:uuid(),account,item,segment,ownerId:owner?pid(owner):null,stage,value,revenueYear:year,quoteNo:'',quoteDate:null,loaDate:null,
+    invoiceMonth:null,startDate:null,probability:null,nextStep:'',nextOwnerId:null,nextDate:null,link:'',notes:'',stageSince:null,createdAt:SEED,createdBy:null,updatedAt:SEED,updatedBy:null},extra||{});
+  const db={people,profiles:[me],settings:{year:2026,target:7000000,financeRevenue:4500000,financeAsOf:'2026-10-01'},
+    commitments:[{personId:pid('Hafsham'),year:2026,amount:2700000}],
+    opps:[
+      mk('BBSG','Q4 quotations, Singapore-related','Mixed','Hafsham','Quote sent',262000,2026,{nextStep:'Mark approved quotes in the quotation sheet',nextOwnerId:pid('Hafsham'),nextDate:'2026-10-07',notes:'Q4 projection stated at the 1 Oct meeting. Part already invoiced in September.'}),
+      mk('AIC','Q4 work','Agency','Hafsham','Invoiced',150000,2026,{notes:'About RM150K, part invoiced in September. Confirm paid vs unpaid.'}),
+      mk('AIC','2027 programme','Agency','Hafsham','Verbal yes',null,2027,{nextStep:'Get the 2027 budget figure from Alvina',nextOwnerId:pid('Hafsham'),nextDate:'2026-10-16'}),
+      mk('BBM','Final-quarter quotation','Agency','Engsim','Invoiced',243000,2026,{nextStep:'Mark the quotation approved',nextOwnerId:pid('Engsim'),nextDate:'2026-10-07',notes:'Invoiced, not all paid yet.'}),
+      mk('BBM','2027 programme','Agency','Engsim','Verbal yes',1000000,2027,{notes:'Stated as RM1m to 2m; low end entered.'}),
+      mk('Gas Malaysia','HSEQ Digital Suite','Tech','Bharg','Quote sent',216000,2027,{nextStep:'Chase client for the contract wording',nextOwnerId:pid('Bharg'),nextDate:'2026-10-09'}),
+      mk('Gas Malaysia','OMS','Tech','Bharg','Quote sent',150000,2027,{nextStep:'Chase client for the contract wording',nextOwnerId:pid('Bharg'),nextDate:'2026-10-09'}),
+      mk('AKPK','Live chat analyser dashboard','Tech','Bharg','LOA/PO',68000,2027,{quoteNo:'Q-932, Q-933, Q-934',quoteDate:'2026-08-07',nextStep:'Add LOA date and expected invoice month',nextOwnerId:pid('Bharg'),nextDate:'2026-10-09'}),
+      mk('BBA','2027 work (Q1 start)','Tech',null,'Proposal',null,2027,{nextStep:'Confirm owner and whether Q1 is going ahead',nextDate:'2026-10-16'}),
+      mk('To confirm','Three quotations under CR-1508','Mixed',null,'Quote sent',null,2026,{quoteNo:'CR-1508',nextStep:'Identify account, owner and value',nextDate:'2026-10-07'})],
+    prospects:[],reviews:[{id:uuid(),at:SEED,by:null,notes:'1 Oct meeting'}],history:[]};
+  db.opps.forEach(o=>db.history.push({oppId:o.id,from:null,to:o.stage,at:SEED,by:null}));
+  let session=null,verified=false,listener=null,authCb=null;const fire=()=>listener&&setTimeout(listener,0);
+  const clone=x=>JSON.parse(JSON.stringify(x));
+  return {
+    demo:true,
+    onAuth(cb){authCb=cb},
+    async session(){return session},
+    async signIn(email,password){if(!email||!password)throw new Error('Enter your email and password.');me.email=email;session={user:{id:me.id,email},access_token:'demo'};verified=false},
+    async signOut(){session=null;verified=false;authCb&&authCb('SIGNED_OUT',null)},
+    async sendReset(){},
+    async setPassword(){},
+    async mfaStatus(){return {verified,role:'admin',expires_at:verified?new Date(Date.now()+12*3600e3).toISOString():null}},
+    async sendCode(){return {sent:true,email_hint:me.email.replace(/^(.{2}).*(@.*)$/,'$1•••$2'),expires_in_seconds:600}},
+    async verifyCode(code){if(code!=='000000'){const e=new Error('That code is not right. In demo mode the code is 000000.');throw e}verified=true;return {verified:true,expires_at:new Date(Date.now()+12*3600e3).toISOString(),role:'admin'}},
+    async invite(p){db.profiles.push({id:uuid(),email:p.email,fullName:p.full_name||'',role:p.role,isActive:true});fire();return {invited:true}},
+    async loadAll(){return clone(db)},
+    subscribe(cb){listener=cb},
+    async saveOpp(o){const t=new Date().toISOString();const prev=o.id&&db.opps.find(x=>x.id===o.id);
+      if(prev){if(prev.stage!==o.stage){db.history.unshift({oppId:o.id,from:prev.stage,to:o.stage,at:t,by:me.id});o.stageSince=todayISO();if(o.stage==='LOA/PO'&&!o.loaDate)o.loaDate=todayISO()}
+        Object.assign(prev,o,{updatedAt:t,updatedBy:me.id});fire();return o.id}
+      const id=uuid();if(o.stage==='LOA/PO'&&!o.loaDate)o.loaDate=todayISO();db.opps.push(Object.assign({},o,{id,stageSince:todayISO(),createdAt:t,createdBy:me.id,updatedAt:t,updatedBy:me.id}));
+      db.history.unshift({oppId:id,from:null,to:o.stage,at:t,by:me.id});fire();return id},
+    async deleteOpp(id){db.opps=db.opps.filter(o=>o.id!==id);fire()},
+    async addProspects(list){const t=new Date().toISOString();list.forEach(p=>db.prospects.push(Object.assign({},p,{id:uuid(),createdAt:t,updatedAt:t})));fire()},
+    async updateProspect(id,patch){const p=db.prospects.find(x=>x.id===id);if(p)Object.assign(p,patch,{updatedAt:new Date().toISOString()});fire()},
+    async saveSettings(s){db.settings=Object.assign({},s);fire()},
+    async saveCommitments(list){list.forEach(c=>{db.commitments=db.commitments.filter(x=>!(x.personId===c.personId&&x.year===c.year));if(c.amount!=null)db.commitments.push(c)});fire()},
+    async markReview(){db.reviews.unshift({id:uuid(),at:new Date().toISOString(),by:me.id,notes:''});fire()},
+    async addPerson(p){if(db.people.some(x=>x.name.toLowerCase()===p.name.toLowerCase()))throw new Error('An owner with that name already exists.');db.people.push({id:uuid(),name:p.name,email:p.email||'',profileId:null,isActive:true});fire()},
+    async updatePerson(id,patch){const p=db.people.find(x=>x.id===id);if(p)Object.assign(p,patch);fire()},
+    async updateProfile(id,patch){const p=db.profiles.find(x=>x.id===id);if(!p)return;if(p.role==='admin'&&(patch.role&&patch.role!=='admin'||patch.isActive===false)&&db.profiles.filter(x=>x.role==='admin'&&x.isActive&&x.id!==id).length===0)throw new Error('At least one active admin is required');Object.assign(p,patch);fire()}
+  };
+}
+
+const B=DEMO?DemoBackend():SupabaseBackend();
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const S={data:{people:[],profiles:[],settings:{year:2026,target:0,financeRevenue:0,financeAsOf:''},commitments:[],opps:[],prospects:[],reviews:[],history:[]},
+  auth:{userId:null,email:'',role:null,until:null,sessionId:null},needPassword:LINK_TYPE==='invite'||LINK_TYPE==='recovery',
+  f:Object.assign({seg:'all',owner:'all',year:'all',q:'',lost:false,stage:'all',pstatus:'all'},load('f',{})),sort:{key:'value',dir:-1},
+  tab:'overview',editing:null,prospectFor:null,expiryTimer:null,started:false};
+const canWrite=()=>S.auth.role==='admin'||S.auth.role==='editor';
+const isAdmin=()=>S.auth.role==='admin';
+const personName=id=>{if(!id)return 'Unassigned';const p=S.data.people.find(x=>x.id===id);return p?p.name:'Unknown'};
+const profileName=id=>{const p=S.data.profiles.find(x=>x.id===id);return p?(p.fullName||p.email):''};
+const activePeople=()=>S.data.people.filter(p=>p.isActive);
+
+/* =====================================================================
+   AUTH FLOW
+   ===================================================================== */
+function showAuth(step,msg,kind){
+  $('authView').hidden=false;$('appView').hidden=true;$('demoNote').hidden=!B.demo;
+  document.querySelectorAll('[data-step]').forEach(el=>el.hidden=el.dataset.step!==step);
+  authMsg(msg,kind);
+  const f={signin:'si_email',otp:'otp_code',forgot:'fp_email',setpw:'sp_pw'}[step];setTimeout(()=>{const e=$(f);e&&e.focus()},30);
+}
+function authMsg(msg,kind){const m=$('authMsg');if(!msg){m.hidden=true;return}m.hidden=false;m.className='msg '+(kind||'err');m.textContent=msg}
+function busy(btn,on,label){btn.disabled=on;if(label){if(on){btn.dataset.l=btn.textContent;btn.textContent=label}else if(btn.dataset.l)btn.textContent=btn.dataset.l}}
+
+async function route(){
+  let sess=null;try{sess=await B.session()}catch(e){}
+  if(!sess){stopApp();showAuth('signin');return}
+  S.auth.userId=sess.user.id;S.auth.email=sess.user.email||'';S.auth.sessionId=B.demo?'demo':(jwtPayload(sess.access_token).session_id||'');
+  if(S.needPassword){showAuth('setpw');return}
+  let st;try{st=await B.mfaStatus()}catch(e){showAuth('signin','We could not check your sign-in. '+e.message);return}
+  if(!st||!st.role){await B.signOut();showAuth('signin','Your access is switched off or not set up yet. Contact the board admin.');return}
+  S.auth.role=st.role;
+  if(!st.verified){stopApp();showAuth('otp');autoSend();return}
+  S.auth.until=st.expires_at;startApp();
+}
+
+let cooldown=0,cdTimer=null;
+function startCooldown(sec){cooldown=sec;const b=$('otp_resend');clearInterval(cdTimer);const tick=()=>{if(cooldown<=0){b.textContent='Send a new code';b.removeAttribute('aria-disabled');clearInterval(cdTimer);return}b.textContent=`Send a new code (${cooldown}s)`;b.setAttribute('aria-disabled','true');cooldown--};tick();cdTimer=setInterval(tick,1000)}
+async function autoSend(){const key='cdspb.otp.'+S.auth.sessionId;if(ss(key)){$('otpLead').textContent='Enter the 6-digit code we emailed you. It expires 10 minutes after it was sent.';return}await sendCode(key)}
+async function sendCode(key){
+  try{const r=await B.sendCode();ss(key||('cdspb.otp.'+S.auth.sessionId),'1');
+    $('otpLead').textContent=`We sent a 6-digit code to ${r.email_hint||'your email'}. It expires in ${Math.round((r.expires_in_seconds||600)/60)} minutes.`;
+    authMsg(null);startCooldown(60)}
+  catch(e){authMsg(e.message);if(e.retry_after)startCooldown(e.retry_after)}
+}
+
+$('signinForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('si_btn');const email=$('si_email').value.trim(),pw=$('si_password').value;
+  if(!email||!pw){authMsg('Enter your email and password.');return}
+  busy(b,true,'Checking…');try{await B.signIn(email,pw);$('si_password').value='';await route()}catch(err){authMsg(err.message)}busy(b,false)});
+$('otpForm').addEventListener('submit',async e=>{e.preventDefault();const code=$('otp_code').value.replace(/\s+/g,'');
+  if(!/^\d{6}$/.test(code)){authMsg('Enter the 6-digit code from the email.');return}
+  const b=$('otp_btn');busy(b,true,'Checking…');
+  try{await B.verifyCode(code);$('otp_code').value='';await route()}catch(err){authMsg(err.message);if(err.expired)$('otp_code').value=''}busy(b,false)});
+$('otp_code').addEventListener('input',e=>{const v=e.target.value.replace(/\D/g,'').slice(0,6);e.target.value=v;if(v.length===6)$('otpForm').requestSubmit()});
+$('otp_resend').addEventListener('click',()=>{if(cooldown>0)return;sendCode()});
+$('otp_switch').addEventListener('click',async()=>{await B.signOut();showAuth('signin')});
+$('forgotForm').addEventListener('submit',async e=>{e.preventDefault();const email=$('fp_email').value.trim();if(!email){authMsg('Enter your work email.');return}
+  const b=$('fp_btn');busy(b,true,'Sending…');try{await B.sendReset(email);authMsg('If that email has an account, a reset link is on its way. Open it on this device.','ok')}catch(err){authMsg(err.message)}busy(b,false)});
+$('setpwForm').addEventListener('submit',async e=>{e.preventDefault();const a=$('sp_pw').value,c=$('sp_pw2').value;
+  if(a.length<10){authMsg('Use at least 10 characters.');return}if(a!==c){authMsg('The two passwords do not match.');return}
+  const b=$('sp_btn');busy(b,true,'Saving…');try{await B.setPassword(a);S.needPassword=false;history.replaceState(null,'',location.pathname);$('sp_pw').value=$('sp_pw2').value='';toast('Password saved');await route()}catch(err){authMsg(err.message)}busy(b,false)});
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showAuth(b.dataset.go)));
+$('signOutBtn').addEventListener('click',async()=>{await B.signOut();stopApp();showAuth('signin','You are signed out.','ok')});
+B.onAuth((ev)=>{if(ev==='SIGNED_OUT'){stopApp();showAuth('signin')}else if(ev==='PASSWORD_RECOVERY'){S.needPassword=true;route()}});
+
+/* =====================================================================
+   APP LIFECYCLE
+   ===================================================================== */
+async function refresh(){try{S.data=await B.loadAll();render()}catch(e){
+  if(/permission|row-level|JWT|401|403/i.test(e.message)){route();return}
+  $('banner').innerHTML=`<div class="banner">Could not load the latest data: ${esc(e.message)}</div>`}}
+async function startApp(){
+  $('authView').hidden=true;$('appView').hidden=false;
+  if(!S.started){S.started=true;B.subscribe(refresh)}
+  const h=location.hash.slice(1);S.tab=TABS.includes(h)?h:load('tab','overview');
+  await refresh();
+  clearTimeout(S.expiryTimer);
+  if(S.auth.until){const ms=new Date(S.auth.until).getTime()-Date.now();if(ms>0)S.expiryTimer=setTimeout(()=>{toast('Your verified session has ended. Enter a new code.');route()},Math.min(ms,2147483000))}
+}
+function stopApp(){clearTimeout(S.expiryTimer);closeDrawer()}
+
+/* =====================================================================
+   DERIVED DATA
+   ===================================================================== */
+function filtered(opts){opts=opts||{};const q=S.f.q.trim().toLowerCase();return S.data.opps.filter(o=>{
+  if(S.f.seg!=='all'&&o.segment!==S.f.seg)return false;
+  if(!opts.ignoreOwner&&S.f.owner!=='all'&&(o.ownerId||'none')!==S.f.owner)return false;
+  if(S.f.year!=='all'&&String(o.revenueYear)!==S.f.year)return false;
+  if(q&&!((o.account||'')+' '+(o.item||'')+' '+(o.quoteNo||'')+' '+(o.notes||'')).toLowerCase().includes(q))return false;
+  return true})}
+const isOpen=o=>OPEN.includes(o.stage);
+const isWon=o=>WON.includes(o.stage);
+const overdue=o=>isOpen(o)&&o.nextDate&&o.nextDate<todayISO();
+const lastReview=()=>S.data.reviews.length?S.data.reviews.reduce((a,r)=>r.at>a?r.at:a,S.data.reviews[0].at):'';
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function renderChrome(){
+  const me=S.data.profiles.find(p=>p.id===S.auth.userId);
+  $('whoName').innerHTML=`<b>${esc((me&&me.fullName)||S.auth.email)}</b>`;$('whoRole').textContent=S.auth.role||'';
+  $('whoUntil').textContent=S.auth.until?`verified until ${fmtTime(S.auth.until)}`:'';
+  $('teamTab').hidden=!isAdmin();if(S.tab==='team'&&!isAdmin())S.tab='overview';
+  document.querySelectorAll('nav.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.tab===S.tab?'page':'false'));
+  document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==S.tab);
+  $('filters').hidden=['settings','prospects','team'].includes(S.tab);
+  $('addBtn').hidden=!canWrite();
+  const own=$('fOwner');own.innerHTML='<option value="all">All</option>'+activePeople().map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')+'<option value="none">Unassigned</option>';
+  if(![...own.options].some(o=>o.value===S.f.owner))S.f.owner='all';own.value=S.f.owner;
+  $('fSeg').value=S.f.seg;$('fYear').value=S.f.year;if(document.activeElement!==$('fQ'))$('fQ').value=S.f.q;$('fLost').checked=S.f.lost;
+  const fs=$('fStage');if(fs.options.length<2)fs.innerHTML+=STAGES.map(s=>`<option>${s}</option>`).join('');fs.value=S.f.stage;
+  $('fCount').textContent=S.data.opps.length?`${filtered().length} of ${S.data.opps.length} opportunities match`:'';
+  $('banner').innerHTML=B.demo?'<div class="banner">Demo mode: sample data from the 1 Oct 2026 meeting. Add your Supabase URL and key in the file to go live.</div>':(!canWrite()?'<div class="banner">You have view-only access. Ask an admin for editor access to add or change opportunities.</div>':'');
+}
+
+function renderTarget(){
+  const st=S.data.settings,yr=st.year,target=num(st.target),booked=num(st.financeRevenue);
+  const rows=S.data.opps.filter(o=>String(o.revenueYear)===String(yr)&&isOpen(o));
+  const by=s=>rows.filter(o=>o.stage===s).reduce((a,o)=>a+num(o.value),0);
+  const loa=by('LOA/PO'),verbal=by('Verbal yes'),quoted=by('Quote sent'),early=by('Proposal')+by('Lead');
+  const gap=Math.max(0,target-booked);
+  const segs=[{k:'Booked (finance)',v:booked,o:1},{k:'LOA / PO in hand',v:loa,o:.62},{k:'Verbal yes',v:verbal,o:.42},{k:'Quote sent',v:quoted,o:.26},{k:'Lead / proposal',v:early,o:.12}];
+  const total=segs.reduce((a,s)=>a+s.v,0);const max=Math.max(target,total)*1.04||1;
+  const W=widthOf('targetBlock'),H=86;let x=0;
+  const bars=segs.map(s=>{const w=s.v/max*W;const r=`<rect x="${x.toFixed(1)}" y="18" width="${Math.max(0,w).toFixed(1)}" height="30" fill="var(--accent)" fill-opacity="${s.o}"><title>${esc(s.k)}: ${fmtRM(s.v)}</title></rect>`;x+=w;return r}).join('');
+  const tx=target/max*W;
+  const ticks=[0,.25,.5,.75,1].map(f=>`<text x="${(f*W).toFixed(1)}" y="${H-6}" fill="var(--fg-3)" text-anchor="${f===0?'start':f===1?'end':'middle'}" class="t-mono">${fmtRM(max*f)}</text>`).join('');
+  $('targetBlock').innerHTML=`
+   <h2>${esc(yr)} revenue against the ${fmtRM(target)} target</h2>
+   <p class="lead">Company-wide, all segments; filters do not apply here. ${st.financeAsOf?`Finance figure as of ${fmtDate(st.financeAsOf)}.`:'Finance figure not set yet.'} Open rows are ${esc(yr)} revenue-year rows not yet invoiced.</p>
+   <div class="target-head">
+     <div><span class="lab">Booked</span><span class="big">${fmtRM(booked)}</span></div>
+     <div><span class="lab">Gap to target</span><span class="big">${fmtRM(gap)}</span></div>
+     <div><span class="lab">LOA / PO in hand</span><span class="big">${fmtRM(loa)}</span></div>
+     <div><span class="lab">Gap after LOA / PO</span><span class="big">${fmtRM(Math.max(0,gap-loa))}</span></div>
+     <div><span class="lab">All open ${esc(yr)} pipeline</span><span class="big">${fmtRM(loa+verbal+quoted+early)}</span></div>
+   </div>
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Booked revenue and open pipeline against target">
+     <rect x="0" y="18" width="${W}" height="30" fill="var(--surface-2)"/>${bars}
+     <line x1="${tx.toFixed(1)}" x2="${tx.toFixed(1)}" y1="8" y2="56" stroke="var(--fg)" stroke-width="2"/>
+     <text x="${tx.toFixed(1)}" y="6" text-anchor="${tx>W-80?'end':'middle'}" fill="var(--fg)" font-weight="600">Target ${fmtRM(target)}</text>${ticks}
+   </svg>
+   <div class="legend">${segs.map(s=>`<span><i style="opacity:${s.o}"></i>${esc(s.k)} <b class="mono">${fmtRM(s.v)}</b></span>`).join('')}</div>`;
+}
+function renderTiles(){
+  const r=filtered(),open=r.filter(isOpen);const sum=a=>a.reduce((x,o)=>x+num(o.value),0);
+  const noVal=open.filter(o=>o.value==null).length;const st=s=>open.filter(o=>o.stage===s);
+  const t=[
+    {k:'Open pipeline',v:fmtRM(sum(open)),n:`${open.length} opportunities${noVal?`, ${noVal} with no value`:''}`},
+    {k:'LOA / PO in hand',v:fmtRM(sum(st('LOA/PO'))),n:`${st('LOA/PO').length} opportunities`},
+    {k:'Verbal yes, no LOA',v:fmtRM(sum(st('Verbal yes'))),n:`${st('Verbal yes').length} opportunities`},
+    {k:'Invoiced, not paid',v:fmtRM(sum(r.filter(o=>o.stage==='Invoiced'))),n:`${r.filter(o=>o.stage==='Invoiced').length} opportunities`},
+    {k:'Next steps overdue',v:String(open.filter(overdue).length),n:'open rows past their next-step date'},
+    {k:'No next step date',v:String(open.filter(o=>!o.nextDate).length),n:'open rows with nothing scheduled'}];
+  $('tiles').innerHTML=t.map(x=>`<div class="tile"><div class="k">${esc(x.k)}</div><div class="v">${esc(x.v)}</div><div class="n">${esc(x.n)}</div></div>`).join('');
+}
+function renderFunnel(){
+  const r=filtered();const st=STAGES.filter(s=>s!=='Lost');
+  const data=st.map((s,i)=>{const rs=r.filter(o=>o.stage===s);return {s,i,c:rs.length,v:rs.reduce((a,o)=>a+num(o.value),0)}});
+  const max=Math.max(1,...data.map(d=>d.v));const W=widthOf('funnelBlock'),rowH=34,H=data.length*rowH+8,lx=86,bw=Math.max(60,W-lx-150);
+  const rows=data.map((d,k)=>{const y=k*rowH+4,w=d.v/max*bw,op=(0.22+0.78*(d.i/(st.length-1))).toFixed(2);
+    return `<g><text x="0" y="${y+20}" fill="var(--fg)">${esc(d.s)}</text><rect x="${lx}" y="${y+6}" width="${bw}" height="20" fill="var(--surface-2)"/>
+      <rect x="${lx}" y="${y+6}" width="${Math.max(d.v?2:0,w).toFixed(1)}" height="20" fill="var(--accent)" fill-opacity="${op}"><title>${esc(d.s)}: ${d.c} opportunities, ${fmtRM(d.v)}</title></rect>
+      <text x="${lx+bw+10}" y="${y+20}" fill="var(--fg)" class="t-mono">${fmtRM(d.v)}</text><text x="${W}" y="${y+20}" fill="var(--fg-2)" text-anchor="end" class="t-mono">${d.c} ${d.c===1?'deal':'deals'}</text></g>`}).join('');
+  const lost=r.filter(o=>o.stage==='Lost');
+  $('funnelBlock').innerHTML=`<h2>Where the money sits, by stage</h2><p class="lead">Value and count at each stage for the current filters.</p>
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Pipeline value by stage">${rows}</svg>
+   <p class="small muted" style="margin:10px 0 0">Lost: ${lost.length} ${lost.length===1?'deal':'deals'}, ${fmtRM(lost.reduce((a,o)=>a+num(o.value),0))}.</p>`;
+}
+function renderInvoices(){
+  const r=filtered().filter(o=>o.stage!=='Lost');const now=new Date();const months=[];
+  for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()+i,1);months.push(d.getFullYear()+'-'+pad(d.getMonth()+1))}
+  const yr=String(S.data.settings.year);
+  const data=months.map(m=>{const rs=r.filter(o=>o.invoiceMonth===m);return {m,c:rs.length,a:rs.filter(o=>String(o.revenueYear)===yr).reduce((x,o)=>x+num(o.value),0),b:rs.filter(o=>String(o.revenueYear)!==yr).reduce((x,o)=>x+num(o.value),0)}});
+  const max=Math.max(1,...data.map(d=>d.a+d.b));const W=widthOf('invoiceBlock'),H=230,y0=24,base=190,bh=base-y0,band=W/months.length,bw=Math.min(70,band*.55);
+  const bars=data.map((d,i)=>{const cx=i*band+band/2,ha=d.a/max*bh,hb=d.b/max*bh;
+    return `<g><rect x="${(cx-bw/2).toFixed(1)}" y="${(base-ha).toFixed(1)}" width="${bw.toFixed(1)}" height="${ha.toFixed(1)}" fill="var(--accent)"><title>${fmtMonth(d.m)}: ${fmtRM(d.a)} ${yr} revenue</title></rect>
+     <rect x="${(cx-bw/2).toFixed(1)}" y="${(base-ha-hb).toFixed(1)}" width="${bw.toFixed(1)}" height="${hb.toFixed(1)}" fill="var(--accent)" fill-opacity=".32"><title>${fmtMonth(d.m)}: ${fmtRM(d.b)} later-year work billed early</title></rect>
+     <text x="${cx.toFixed(1)}" y="${(base-ha-hb-7).toFixed(1)}" text-anchor="middle" fill="var(--fg)" class="t-mono">${d.a+d.b?fmtRM(d.a+d.b):''}</text>
+     <text x="${cx.toFixed(1)}" y="${base+18}" text-anchor="middle" fill="var(--fg-2)">${fmtMonth(d.m)}</text>
+     <text x="${cx.toFixed(1)}" y="${base+34}" text-anchor="middle" fill="var(--fg-3)" font-size="11">${d.c?d.c+' rows':''}</text></g>`}).join('');
+  const none=r.filter(o=>!o.invoiceMonth&&(isOpen(o)||o.stage==='Invoiced')).length;
+  $('invoiceBlock').innerHTML=`<h2>Expected invoices, next six months</h2><p class="lead">By expected invoice month. The lighter part is work for a later revenue year invoiced early, which helps cash but not this year's number.</p>
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Expected invoices by month"><line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="var(--line)"/>${bars}${data.every(d=>!(d.a+d.b))?`<text x="${W/2}" y="${base/2+10}" text-anchor="middle" fill="var(--fg-2)">No expected invoice months entered for these months yet</text>`:''}</svg>
+   <div class="legend"><span><i></i>${esc(yr)} revenue</span><span><i style="opacity:.32"></i>Later-year work</span></div>
+   <p class="small muted" style="margin:8px 0 0">${none} open or invoiced ${none===1?'row has':'rows have'} no expected invoice month.</p>`;
+}
+function renderOwners(){
+  const r=filtered({ignoreOwner:true});const yr=S.data.settings.year;
+  const com=id=>{const c=S.data.commitments.find(x=>x.personId===id&&x.year===yr);return c?c.amount:null};
+  const ids=activePeople().map(p=>p.id);if(r.some(o=>!o.ownerId))ids.push(null);r.forEach(o=>{if(o.ownerId&&!ids.includes(o.ownerId))ids.push(o.ownerId)});
+  const rows=ids.map(id=>{const mine=r.filter(o=>(o.ownerId||null)===id);const y=mine.filter(o=>o.revenueYear===yr&&o.stage!=='Lost');
+    return {n:personName(id),com:id?com(id):null,tr:y.reduce((a,o)=>a+num(o.value),0),sec:y.filter(o=>o.stage==='LOA/PO'||isWon(o)).reduce((a,o)=>a+num(o.value),0),
+      oc:mine.filter(isOpen).length,ov:mine.filter(isOpen).reduce((a,o)=>a+num(o.value),0),od:mine.filter(overdue).length,nn:mine.filter(o=>isOpen(o)&&!o.nextDate).length}}).filter(x=>x.com!=null||x.oc||x.tr);
+  rows.sort((a,b)=>b.ov-a.ov);
+  $('ownerBlock').innerHTML=`<h2>By owner</h2><p class="lead">Each person's committed ${esc(yr)} number (set under Targets) beside what the board holds for them. Segment, year and search filters apply.</p>
+   ${rows.length?`<div class="scroll"><table><thead><tr><th>Owner</th><th class="r">Committed ${esc(yr)}</th><th class="r">On board for ${esc(yr)}</th><th class="r">LOA / won ${esc(yr)}</th><th class="r">Open deals</th><th class="r">Open value</th><th class="r">Overdue next steps</th><th class="r">No next step</th></tr></thead><tbody>
+   ${rows.map(x=>`<tr><td>${esc(x.n)}</td><td class="r num">${x.com!=null?fmtFull(x.com):'—'}</td><td class="r num">${fmtFull(x.tr)}</td><td class="r num">${fmtFull(x.sec)}</td><td class="r num">${x.oc}</td><td class="r num">${fmtFull(x.ov)}</td><td class="r num${x.od?' overdue':''}">${x.od}</td><td class="r num">${x.nn}</td></tr>`).join('')}
+   </tbody></table></div>`:'<div class="empty">No opportunities yet.</div>'}`;
+}
+
+const COLS=[{k:'account',l:'Account'},{k:'item',l:'Item'},{k:'segment',l:'Seg.'},{k:'owner',l:'Owner'},{k:'stage',l:'Stage'},{k:'value',l:'Value (RM)',r:1},{k:'revenueYear',l:'Year',r:1},
+  {k:'quoteDate',l:'Quote sent'},{k:'days',l:'Days in stage',r:1},{k:'invoiceMonth',l:'Invoice'},{k:'nextStep',l:'Next step'},{k:'nextDate',l:'Next date'},{k:'updatedAt',l:'Updated'}];
+function sortVal(o,k){if(k==='days')return daysSince(o.stageSince)??-1;if(k==='stage')return stageIdx(o.stage);if(k==='value')return o.value==null?-1:Number(o.value);if(k==='owner')return personName(o.ownerId).toLowerCase();return (o[k]==null?'':String(o[k])).toLowerCase()}
+function renderTable(){
+  let r=filtered().filter(o=>S.f.lost||o.stage!=='Lost');if(S.f.stage!=='all')r=r.filter(o=>o.stage===S.f.stage);
+  const {key,dir}=S.sort;r.sort((a,b)=>{const x=sortVal(a,key),y=sortVal(b,key);return x<y?-dir:x>y?dir:0});
+  const head=`<thead><tr>${COLS.map(c=>`<th class="${c.r?'r':''}" aria-sort="${key===c.k?(dir>0?'ascending':'descending'):'none'}"><button type="button" data-sort="${c.k}">${esc(c.l)}${key===c.k?(dir>0?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead>`;
+  if(!r.length){$('oppTable').innerHTML=head+`<tbody><tr><td colspan="${COLS.length}"><div class="empty">${S.data.opps.length?'No opportunities match these filters.':'No opportunities yet. Use “Add opportunity” to log the first one.'}</div></td></tr></tbody>`;return}
+  const body=r.map(o=>{const d=daysSince(o.stageSince);return `<tr class="click" data-id="${esc(o.id)}" tabindex="0">
+     <td><b>${esc(o.account)}</b>${o.quoteNo?`<div class="small muted mono">${esc(o.quoteNo)}</div>`:''}</td>
+     <td style="min-width:200px">${esc(o.item)}${o.notes?`<div class="small muted">${esc(o.notes.length>110?o.notes.slice(0,110)+'…':o.notes)}</div>`:''}</td>
+     <td class="seg">${esc(o.segment||'—')}</td><td>${esc(personName(o.ownerId))}</td>
+     <td><span class="pill s${stageIdx(o.stage)}${o.stage==='Lost'?' lost':''}">${esc(o.stage)}</span></td>
+     <td class="r num">${fmtFull(o.value)}</td><td class="r num">${esc(o.revenueYear||'—')}</td><td class="num">${fmtDate(o.quoteDate)}</td>
+     <td class="r num">${d==null?'—':d}</td><td class="num">${fmtMonth(o.invoiceMonth)}</td>
+     <td style="min-width:180px">${esc(o.nextStep||'—')}${o.nextOwnerId?`<div class="small muted">${esc(personName(o.nextOwnerId))}</div>`:''}</td>
+     <td class="num${overdue(o)?' overdue':''}">${fmtDate(o.nextDate)}</td>
+     <td class="small muted">${fmtDate(o.updatedAt)}${o.updatedBy?`<div>by ${esc(profileName(o.updatedBy))}</div>`:''}</td></tr>`}).join('');
+  $('oppTable').innerHTML=head+`<tbody>${body}</tbody><tfoot><tr><td colspan="5" class="small muted">${r.length} rows</td><td class="r num"><b>${fmtFull(r.reduce((a,o)=>a+num(o.value),0))}</b></td><td colspan="${COLS.length-6}"></td></tr></tfoot>`;
+}
+
+function renderReview(){
+  const lr=lastReview();const r=filtered();const ids=new Set(r.map(o=>o.id));const after=iso=>lr&&iso&&iso>lr;
+  const added=r.filter(o=>after(o.createdAt));
+  const moved=S.data.history.filter(h=>h.from&&after(h.at)&&ids.has(h.oppId)).map(h=>({o:r.find(x=>x.id===h.oppId),e:h})).sort((a,b)=>a.e.at<b.e.at?1:-1);
+  const stale=r.filter(o=>isOpen(o)&&lr&&(!o.updatedAt||o.updatedAt<=lr));
+  const od=r.filter(overdue).sort((a,b)=>a.nextDate<b.nextDate?-1:1);
+  const t=todayISO(),lim=new Date(Date.now()+60*864e5).toISOString().slice(0,10);
+  const soon=r.filter(o=>(o.stage==='LOA/PO'||o.stage==='Verbal yes'||isWon(o))&&o.startDate&&o.startDate>=t&&o.startDate<=lim).sort((a,b)=>a.startDate<b.startDate?-1:1);
+  const noStart=r.filter(o=>(o.stage==='LOA/PO'||o.stage==='Verbal yes')&&!o.startDate);
+  const item=(o,extra)=>`<li><span class="what"><a href="#pipeline" data-open="${esc(o.id)}">${esc(o.account)}</a> · ${esc(o.item)}</span><span class="meta">${esc(personName(o.ownerId))} · ${fmtRM(o.value)}${extra?' · '+extra:''}</span></li>`;
+  const list=(arr,fn,msg)=>arr.length?`<ul class="list">${arr.map(fn).join('')}</ul>`:`<div class="empty">${msg}</div>`;
+  $('reviewHead').innerHTML=`<div class="toolbar"><div style="flex:1;min-width:240px"><h2>Pipeline review</h2><p class="lead" style="margin:0">Everything that changed since the last team review${lr?` on <b>${fmtDate(lr)}</b>`:''}. Work through these lists in the meeting, then mark the review done.</p></div>
+    ${canWrite()?'<button type="button" class="primary" id="markReview">Mark review done now</button>':''}</div>`;
+  $('reviewGrid').innerHTML=`
+   <section class="block"><h2>Overdue next steps (${od.length})</h2><p class="lead">Open rows past their next-step date, oldest first.</p>${list(od,o=>item(o,`<span class="overdue">${daysSince(o.nextDate)} days overdue</span> · ${esc(o.nextStep||'')}`),'Nothing overdue.')}</section>
+   <section class="block"><h2>Moved stage since the review (${moved.length})</h2><p class="lead">Every stage change, logged by the database.</p>${list(moved,m=>item(m.o,`${esc(m.e.from)} → ${esc(m.e.to)} on ${fmtDate(m.e.at)}${m.e.by?' by '+esc(profileName(m.e.by)):''}`),'No stage changes since the last review.')}</section>
+   <section class="block"><h2>Added since the review (${added.length})</h2><p class="lead">New opportunities logged after the last review.</p>${list(added,o=>item(o,`${esc(o.stage)} · added ${fmtDate(o.createdAt)}`),'Nothing new has been added.')}</section>
+   <section class="block"><h2>Open and not updated since the review (${stale.length})</h2><p class="lead">Open rows no one has touched since the last review.</p>${list(stale,o=>item(o,`${esc(o.stage)} · last updated ${fmtDate(o.updatedAt)}`),'Every open row has been updated.')}</section>
+   <section class="block"><h2>Starting in the next 60 days (${soon.length})</h2><p class="lead">Verbal yes, LOA or won work with a delivery start date before ${fmtDate(lim)}. Delivery plans live on the <a href="${esc(CONFIG.TECH_BOARD_URL)}" target="_blank" rel="noopener">CDS Tech Projects Board</a>.</p>${list(soon,o=>item(o,`starts ${fmtDate(o.startDate)}`),'No dated starts in the next 60 days.')}</section>
+   <section class="block"><h2>Verbal yes or LOA with no start date (${noStart.length})</h2><p class="lead">Delivery cannot plan resources for these until a start date is set.</p>${list(noStart,o=>item(o,esc(o.stage)),'Every confirmed row has a start date.')}</section>`;
+  const mb=$('markReview');if(mb)mb.onclick=async()=>{mb.disabled=true;try{await B.markReview();toast('Review marked as done');await refresh()}catch(e){toast(e.message);mb.disabled=false}};
+}
+
+function ownerOptions(sel){return activePeople().map(p=>`<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${esc(p.name)}</option>`).join('')+`<option value=""${!sel?' selected':''}>Unassigned</option>`}
+function renderProspects(){
+  const ps=S.data.prospects;const counts=PSTATUS.map(s=>({s,c:ps.filter(p=>p.status===s.k).length}));const moved=ps.filter(p=>p.opportunityId).length;
+  const W=widthOf('prospectHead'),total=ps.length||1;let x=0;
+  const segs=counts.map(({s,c})=>{const w=c/total*W;const r=`<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="22" fill="var(--p-${s.k})" stroke="var(--line)"><title>${esc(s.label)}: ${c}</title></rect>`;x+=w;return r}).join('');
+  $('prospectHead').innerHTML=`<h2>Prospects not yet in the pipeline</h2><p class="lead">Companies we have contact details for but no opportunity yet, such as the SSM convention list. A prospect moves to the pipeline once a meeting is booked.</p>
+   ${ps.length?`<svg viewBox="0 0 ${W} 22" width="${W}" role="img" aria-label="Prospects by status">${segs}</svg>`:''}
+   <div class="legend">${counts.map(({s,c})=>`<span><b class="dot ${s.k}"></b>${esc(s.label)} <b class="mono">${c}</b></span>`).join('')}<span>Moved to pipeline <b class="mono">${moved}</b></span><span>Total <b class="mono">${ps.length}</b></span></div>`;
+  const sel=$('pStatus');if(sel.options.length<2)sel.innerHTML+=PSTATUS.map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join('');sel.value=S.f.pstatus;
+  let r=ps.slice();if(S.f.pstatus!=='all')r=r.filter(p=>p.status===S.f.pstatus);
+  const rank={green:0,yellow:1,orange:2,white:3};r.sort((a,b)=>(rank[a.status]-rank[b.status])||a.company.localeCompare(b.company));
+  const ed=canWrite();
+  $('pTable').innerHTML=`<thead><tr><th>Company</th><th>Contact</th><th>Designation</th><th>Phone</th><th>Email</th><th>Status</th><th>Owner</th><th>Source</th><th></th></tr></thead><tbody>${r.length?r.map(p=>`<tr>
+    <td><b>${esc(p.company)}</b></td><td>${esc(p.contactName||'—')}</td><td>${esc(p.designation||'—')}</td><td class="small num">${esc(p.phone||'—')}</td><td class="small">${esc(p.email||'—')}</td>
+    <td>${ed?`<select data-pstatus="${esc(p.id)}" aria-label="Status for ${esc(p.company)}">${PSTATUS.map(s=>`<option value="${s.k}"${p.status===s.k?' selected':''}>${esc(s.label)}</option>`).join('')}</select>`:`<span class="dot ${esc(p.status)}"></span> ${esc((PSTATUS.find(s=>s.k===p.status)||{}).label)}`}</td>
+    <td>${esc(personName(p.ownerId))}</td><td class="small muted">${esc(p.source||'—')}</td>
+    <td>${p.opportunityId?'<span class="small muted">In pipeline</span>':ed?`<button type="button" data-promote="${esc(p.id)}">Move to pipeline</button>`:''}</td></tr>`).join(''):`<tr><td colspan="9"><div class="empty">${ps.length?'No prospects with this status.':'No prospects yet. Paste the SSM convention list from its spreadsheet to load it.'}</div></td></tr>`}</tbody>`;
+  $('pAddBtn').hidden=$('pImportBtn').hidden=!ed;if(!ed){$('pAdd').hidden=$('pImport').hidden=true}
+  const hafsham=(S.data.people.find(p=>p.name==='Hafsham')||{}).id;
+  ['pImportOwner','pa_owner'].forEach(id=>{const e=$(id);const v=e.value||hafsham||'';e.innerHTML=ownerOptions(v)});
+  const pa=$('pa_status');if(!pa.options.length)pa.innerHTML=PSTATUS.map(s=>`<option value="${s.k}">${esc(s.label)}</option>`).join('');
+}
+
+function renderSettings(){
+  const ro=!isAdmin();const s=S.data.settings;const focus=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#setForm,#comTable');
+  if(!focus){$('st_year').value=s.year;$('st_target').value=s.target||'';$('st_fin').value=s.financeRevenue||'';$('st_asof').value=s.financeAsOf||''}
+  ['st_year','st_target','st_fin','st_asof'].forEach(id=>$(id).disabled=ro);$('st_save').hidden=ro;$('com_save').hidden=ro;
+  $('comLead').textContent=`Each person's committed revenue for ${s.year}. Leave blank if they have no number.`;
+  if(!focus){$('comTable').innerHTML=`<thead><tr><th>Person</th><th class="r">Committed ${esc(s.year)} (RM)</th></tr></thead><tbody>${activePeople().map(p=>{const c=S.data.commitments.find(x=>x.personId===p.id&&x.year===s.year);
+    return `<tr><td>${esc(p.name)}</td><td class="r">${ro?`<span class="num">${c?fmtFull(c.amount):'—'}</span>`:`<input type="number" min="0" step="1000" data-com="${esc(p.id)}" value="${c?c.amount:''}" aria-label="Commitment for ${esc(p.name)}" style="width:160px;text-align:right">`}</td></tr>`}).join('')}</tbody>`}
+}
+
+function renderTeam(){
+  if(!isAdmin())return;
+  $('loginTable').innerHTML=`<thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th></tr></thead><tbody>${S.data.profiles.map(p=>`<tr>
+    <td>${esc(p.fullName||'—')}${p.id===S.auth.userId?' <span class="small muted">(you)</span>':''}</td><td>${esc(p.email)}</td>
+    <td><select data-role="${esc(p.id)}" aria-label="Role for ${esc(p.email)}">${['admin','editor','viewer'].map(r=>`<option value="${r}"${p.role===r?' selected':''}>${r[0].toUpperCase()+r.slice(1)}</option>`).join('')}</select></td>
+    <td><label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-active="${esc(p.id)}"${p.isActive?' checked':''}> Active</label></td></tr>`).join('')}</tbody>`;
+  $('peopleTable').innerHTML=`<thead><tr><th>Name</th><th>Email</th><th>Login</th><th>Owner list</th></tr></thead><tbody>${S.data.people.map(p=>`<tr>
+    <td>${esc(p.name)}</td><td>${esc(p.email||'—')}</td><td class="small">${p.profileId?'Linked':'<span class="muted">No login</span>'}</td>
+    <td><label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-pactive="${esc(p.id)}"${p.isActive?' checked':''}> Show in owner lists</label></td></tr>`).join('')}</tbody>`;
+}
+
+function render(){renderChrome();renderTarget();renderTiles();renderFunnel();renderInvoices();renderOwners();renderTable();renderReview();renderProspects();renderSettings();renderTeam()}
+
+/* =====================================================================
+   PROSPECT IMPORT
+   ===================================================================== */
+function splitLine(line,d){if(d==='\t')return line.split('\t').map(s=>s.trim());const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(q){if(c==='"'&&line[i+1]==='"'){cur+='"';i++}else if(c==='"')q=false;else cur+=c}else if(c==='"')q=true;else if(c===','){out.push(cur.trim());cur=''}else cur+=c}out.push(cur.trim());return out}
+function normStatus(s){s=String(s||'').toLowerCase();if(/green|ready|positive/.test(s))return 'green';if(/yellow|budget|interest/.test(s))return 'yellow';if(/orange|work/.test(s))return 'orange';return 'white'}
+async function importProspects(){
+  const txt=$('pImportText').value.trim(),msg=$('pImportMsg');if(!txt){msg.textContent='Paste some rows first.';return}
+  const lines=txt.split(/\r?\n/).filter(l=>l.trim());const d=lines[0].includes('\t')?'\t':',';let rows=lines.map(l=>splitLine(l,d));
+  let idx={company:0,contact:1,designation:2,phone:3,email:4,status:5,source:6};const h=rows[0].map(x=>x.toLowerCase());
+  if(h.some(x=>/company|organi[sz]ation|firm/.test(x))){idx={};h.forEach((x,i)=>{if(/company|organi[sz]ation|firm/.test(x)&&idx.company==null)idx.company=i;else if(/designation|title|position|role/.test(x))idx.designation=i;
+    else if(/contact|name|pic/.test(x)&&idx.contact==null)idx.contact=i;else if(/phone|mobile|tel/.test(x))idx.phone=i;else if(/mail/.test(x))idx.email=i;else if(/status|colou?r|stage/.test(x))idx.status=i;else if(/source/.test(x))idx.source=i});rows=rows.slice(1)}
+  const g=(r,k)=>idx[k]==null?'':(r[idx[k]]||'');const owner=$('pImportOwner').value||null,src=$('pImportSource').value.trim();
+  const items=rows.filter(r=>g(r,'company')).map(r=>({company:g(r,'company'),contactName:g(r,'contact'),designation:g(r,'designation'),phone:g(r,'phone'),email:g(r,'email'),status:normStatus(g(r,'status')),source:g(r,'source')||src,ownerId:owner}));
+  if(!items.length){msg.textContent='No rows with a company name were found.';return}
+  $('pImportGo').disabled=true;msg.textContent=`Importing ${items.length}…`;
+  try{await B.addProspects(items);msg.textContent=`Imported ${items.length} prospects.`;$('pImportText').value='';await refresh()}catch(e){msg.textContent='Import stopped: '+e.message}
+  $('pImportGo').disabled=false;
+}
+
+/* =====================================================================
+   OPPORTUNITY DRAWER
+   ===================================================================== */
+function openDrawer(o,prefill){
+  S.editing=o?o.id:null;const v=o||Object.assign({segment:'Tech',stage:'Lead',revenueYear:S.data.settings.year,ownerId:S.f.owner!=='all'&&S.f.owner!=='none'?S.f.owner:null},prefill||{});
+  $('dTitle').textContent=o?`${o.account} · ${o.item}`:'New opportunity';
+  $('o_owner').innerHTML=ownerOptions(v.ownerId);$('o_nextOwner').innerHTML=ownerOptions(v.nextOwnerId||v.ownerId);
+  $('o_stage').innerHTML=STAGES.map(s=>`<option>${s}</option>`).join('');
+  $('o_account').value=v.account||'';$('o_segment').value=v.segment||'Tech';$('o_item').value=v.item||'';$('o_stage').value=v.stage||'Lead';
+  $('o_value').value=v.value==null?'':v.value;$('o_year').value=String(v.revenueYear||S.data.settings.year);$('o_quoteNo').value=v.quoteNo||'';
+  $('o_quoteDate').value=v.quoteDate||'';$('o_loaDate').value=v.loaDate||'';$('o_invoiceMonth').value=v.invoiceMonth||'';$('o_startDate').value=v.startDate||'';
+  $('o_prob').value=v.probability==null?'':v.probability;$('o_nextStep').value=v.nextStep||'';$('o_nextDate').value=v.nextDate||'';$('o_link').value=v.link||'';$('o_notes').value=v.notes||'';
+  const hist=o?S.data.history.filter(h=>h.oppId===o.id).sort((a,b)=>a.at<b.at?-1:1):[];
+  $('o_meta').innerHTML=o?`<div>Created ${fmtDate(o.createdAt)}${o.createdBy?' by '+esc(profileName(o.createdBy)):''} · last updated ${fmtDate(o.updatedAt)}${o.updatedBy?' by '+esc(profileName(o.updatedBy)):''}${o.link?` · <a href="${esc(o.link)}" target="_blank" rel="noopener">open link</a>`:''}</div>
+    ${hist.length?`<div style="margin-top:6px">Stage history: ${hist.map(h=>`${esc(h.to)} (${fmtDate(h.at)})`).join(' → ')}</div>`:''}`:'';
+  const ro=!canWrite();document.querySelectorAll('#oppForm input,#oppForm select,#oppForm textarea').forEach(e=>e.disabled=ro);
+  $('o_save').hidden=ro;$('o_delete').hidden=ro||!o;$('o_deleteConfirm').hidden=true;
+  $('scrim').hidden=false;$('drawer').hidden=false;setTimeout(()=>$('o_account').focus(),30);
+}
+function closeDrawer(){$('scrim').hidden=true;$('drawer').hidden=true;S.editing=null;S.prospectFor=null}
+async function saveOpp(e){
+  e.preventDefault();const val=$('o_value').value,prob=$('o_prob').value;
+  const o={id:S.editing||null,account:$('o_account').value.trim(),segment:$('o_segment').value,item:$('o_item').value.trim(),ownerId:$('o_owner').value||null,stage:$('o_stage').value,
+    value:val===''?null:Number(val),revenueYear:Number($('o_year').value),quoteNo:$('o_quoteNo').value.trim(),quoteDate:$('o_quoteDate').value||null,loaDate:$('o_loaDate').value||null,
+    invoiceMonth:$('o_invoiceMonth').value||null,startDate:$('o_startDate').value||null,probability:prob===''?null:Number(prob),nextStep:$('o_nextStep').value.trim(),
+    nextOwnerId:$('o_nextOwner').value||null,nextDate:$('o_nextDate').value||null,link:$('o_link').value.trim(),notes:$('o_notes').value.trim()};
+  if(!o.account||!o.item){toast('Account and item are required');return}
+  if(o.link&&!/^https?:\/\//i.test(o.link)){toast('Links must start with https://');return}
+  $('o_save').disabled=true;
+  try{const id=await B.saveOpp(o);if(S.prospectFor){try{await B.updateProspect(S.prospectFor,{opportunityId:id})}catch(_){}}toast(S.editing?'Saved':'Opportunity added');closeDrawer();await refresh()}
+  catch(err){toast(/row-level|permission/i.test(err.message)?'You do not have permission to save this.':'Could not save: '+err.message)}
+  $('o_save').disabled=false;
+}
+
+/* =====================================================================
+   EVENTS
+   ===================================================================== */
+function setTab(t){if(!TABS.includes(t))return;S.tab=t;store('tab',t);render()}
+window.addEventListener('hashchange',()=>setTab(location.hash.slice(1)));
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(!$('appView').hidden)render()},150)});
+const saveF=()=>store('f',S.f);
+$('fSeg').onchange=e=>{S.f.seg=e.target.value;saveF();render()};
+$('fOwner').onchange=e=>{S.f.owner=e.target.value;saveF();render()};
+$('fYear').onchange=e=>{S.f.year=e.target.value;saveF();render()};
+$('fQ').oninput=e=>{S.f.q=e.target.value;saveF();render()};
+$('fLost').onchange=e=>{S.f.lost=e.target.checked;saveF();renderTable()};
+$('fStage').onchange=e=>{S.f.stage=e.target.value;saveF();renderTable()};
+$('pStatus').onchange=e=>{S.f.pstatus=e.target.value;saveF();renderProspects()};
+$('oppTable').addEventListener('click',e=>{const b=e.target.closest('[data-sort]');if(b){const k=b.dataset.sort;S.sort=S.sort.key===k?{key:k,dir:-S.sort.dir}:{key:k,dir:(k==='value'||k==='days')?-1:1};renderTable();return}
+  const tr=e.target.closest('tr[data-id]');if(tr){const o=S.data.opps.find(x=>x.id===tr.dataset.id);if(o)openDrawer(o)}});
+$('oppTable').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-id]');if(tr){const o=S.data.opps.find(x=>x.id===tr.dataset.id);if(o)openDrawer(o)}}});
+$('reviewGrid').addEventListener('click',e=>{const a=e.target.closest('[data-open]');if(a){e.preventDefault();const o=S.data.opps.find(x=>x.id===a.dataset.open);if(o)openDrawer(o)}});
+$('pTable').addEventListener('change',async e=>{const s=e.target.closest('[data-pstatus]');if(s){try{await B.updateProspect(s.dataset.pstatus,{status:s.value});await refresh()}catch(err){toast('Could not update: '+err.message)}}});
+$('pTable').addEventListener('click',e=>{const b=e.target.closest('[data-promote]');if(!b)return;const p=S.data.prospects.find(x=>x.id===b.dataset.promote);if(!p)return;
+  openDrawer(null,{account:p.company,item:'New business',segment:'Tech',stage:'Lead',ownerId:p.ownerId,notes:[p.contactName,p.designation,p.phone,p.email,p.source].filter(Boolean).join(' · ')});S.prospectFor=p.id});
+$('pImportBtn').onclick=()=>{$('pImport').hidden=!$('pImport').hidden;$('pAdd').hidden=true};
+$('pAddBtn').onclick=()=>{$('pAdd').hidden=!$('pAdd').hidden;$('pImport').hidden=true};
+$('pImportGo').onclick=importProspects;
+$('pAddGo').onclick=async()=>{const c=$('pa_company').value.trim();if(!c){toast('Add a company name');return}
+  try{await B.addProspects([{company:c,contactName:$('pa_contact').value.trim(),designation:$('pa_designation').value.trim(),phone:$('pa_phone').value.trim(),email:$('pa_email').value.trim(),status:$('pa_status').value,ownerId:$('pa_owner').value||null,source:'Added on board'}]);
+    ['pa_company','pa_contact','pa_designation','pa_phone','pa_email'].forEach(i=>$(i).value='');toast('Prospect saved');await refresh()}catch(e){toast('Could not save: '+e.message)}};
+$('addBtn').onclick=()=>openDrawer(null);
+$('dClose').onclick=closeDrawer;$('o_cancel').onclick=closeDrawer;$('scrim').onclick=closeDrawer;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('drawer').hidden)closeDrawer()});
+$('oppForm').addEventListener('submit',saveOpp);
+$('o_delete').onclick=()=>{$('o_delete').hidden=true;$('o_deleteConfirm').hidden=false};
+$('o_deleteConfirm').onclick=async()=>{if(!S.editing)return;try{await B.deleteOpp(S.editing);toast('Deleted');closeDrawer();await refresh()}catch(e){toast('Could not delete: '+e.message)}};
+$('setForm').addEventListener('submit',async e=>{e.preventDefault();
+  const s={year:Number($('st_year').value)||2026,target:Number($('st_target').value)||0,financeRevenue:Number($('st_fin').value)||0,financeAsOf:$('st_asof').value||''};
+  try{await B.saveSettings(s);document.activeElement.blur();toast('Target saved');await refresh()}catch(err){toast('Could not save: '+err.message)}});
+$('com_save').onclick=async()=>{const yr=S.data.settings.year;const list=[...document.querySelectorAll('[data-com]')].map(i=>({personId:i.dataset.com,year:yr,amount:i.value===''?null:Number(i.value)}));
+  try{await B.saveCommitments(list);document.activeElement.blur();toast('Commitments saved');await refresh()}catch(e){toast('Could not save: '+e.message)}};
+$('loginTable').addEventListener('change',async e=>{const r=e.target.closest('[data-role]'),a=e.target.closest('[data-active]');
+  try{if(r)await B.updateProfile(r.dataset.role,{role:r.value});if(a)await B.updateProfile(a.dataset.active,{isActive:a.checked});toast('Access updated')}catch(err){toast(/admin is required/i.test(err.message)?'At least one active admin is required.':'Could not update: '+err.message)}await refresh()});
+$('peopleTable').addEventListener('change',async e=>{const a=e.target.closest('[data-pactive]');if(!a)return;try{await B.updatePerson(a.dataset.pactive,{isActive:a.checked});await refresh()}catch(err){toast('Could not update: '+err.message)}});
+$('pp_go').onclick=async()=>{const name=$('pp_name').value.trim();if(!name){toast('Add a name');return}try{await B.addPerson({name,email:$('pp_email').value.trim()});$('pp_name').value=$('pp_email').value='';toast('Owner added');await refresh()}catch(e){toast('Could not add: '+e.message)}};
+$('inv_go').onclick=async()=>{const email=$('inv_email').value.trim(),name=$('inv_name').value.trim(),role=$('inv_role').value,m=$('inv_msg');
+  if(!email){m.textContent='Enter an email address.';return}$('inv_go').disabled=true;m.textContent='Sending…';
+  try{await B.invite({email,full_name:name,role,person_name:name});m.textContent=`Invite sent to ${email}. They set a password from the email, then sign in with a code.`;$('inv_email').value=$('inv_name').value='';await refresh()}catch(e){m.textContent=e.message}
+  $('inv_go').disabled=false};
+
+/* ---------- boot ---------- */
+route();
+})();
+</script>
+</body>
+</html>
