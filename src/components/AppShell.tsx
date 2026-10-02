@@ -1,22 +1,36 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
-import { isConfigured, missingEnv, env } from '@/lib/env'
+import { useAuth } from '@/lib/auth/auth'
+import { useProfile } from '@/lib/auth/useProfile'
+import { fmtTime } from '@/lib/format'
 
 export const TABS = [
-  { to: '/overview', label: 'Overview' },
-  { to: '/pipeline', label: 'Pipeline' },
-  { to: '/review', label: 'Review' },
-  { to: '/prospects', label: 'Prospects' },
-  { to: '/targets', label: 'Targets' },
-  { to: '/team', label: 'Team & access' },
+  { to: '/overview', label: 'Overview', adminOnly: false },
+  { to: '/pipeline', label: 'Pipeline', adminOnly: false },
+  { to: '/review', label: 'Review', adminOnly: false },
+  { to: '/prospects', label: 'Prospects', adminOnly: false },
+  { to: '/targets', label: 'Targets', adminOnly: false },
+  { to: '/team', label: 'Team & access', adminOnly: true },
 ] as const
 
 /**
- * The board's frame: sticky top bar with brand, who-is-signed-in block and tabs.
- * Sign-in details and the "Add opportunity" action come alive in later phases.
+ * The board's frame: sticky top bar with brand, who is signed in, and the tabs.
+ * Rendered only inside RequireVerified, so there is always a verified session here.
  */
 export function AppShell() {
-  const missing = missingEnv(env)
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const profile = useProfile()
+  const role = auth.status?.role ?? null
+  const isAdmin = role === 'admin'
+  const canWrite = role === 'admin' || role === 'editor'
+  const name = profile.data?.full_name || auth.session?.user.email || ''
+
+  const signOut = async () => {
+    await auth.signOut()
+    navigate('/sign-in', { replace: true })
+  }
+
   return (
     <>
       <header className="top">
@@ -29,20 +43,23 @@ export function AppShell() {
             <span className="spacer" />
             <div className="who">
               <span>
-                <b>Not signed in</b>
+                <b>{name}</b>
               </span>
-              <span className="role">preview</span>
+              {role && <span className="role">{role}</span>}
+              {auth.status?.expiresAt && <span className="small">verified until {fmtTime(auth.status.expiresAt)}</span>}
               <ThemeToggle />
-              <NavLink to="/sign-in" className="small">
-                Sign in
-              </NavLink>
+              <button type="button" className="ghost" onClick={() => void signOut()}>
+                Sign out
+              </button>
             </div>
-            <button className="primary" type="button" disabled title="Available once the pipeline tab is built">
-              Add opportunity
-            </button>
+            {canWrite && (
+              <button className="primary" type="button" disabled title="Available once the pipeline tab is built">
+                Add opportunity
+              </button>
+            )}
           </div>
           <nav className="tabs" aria-label="Sections">
-            {TABS.map((t) => (
+            {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
               <NavLink key={t.to} to={t.to}>
                 {t.label}
               </NavLink>
@@ -51,11 +68,9 @@ export function AppShell() {
         </div>
       </header>
       <div className="wrap">
-        {!isConfigured && (
+        {role === 'viewer' && (
           <div className="banner" role="status">
-            Not connected to Supabase yet: {missing.join(' and ')} {missing.length === 1 ? 'is' : 'are'} missing. Copy{' '}
-            <code>.env.example</code> to <code>.env.local</code> and fill in the values from{' '}
-            <code>npx supabase status</code>.
+            You have view-only access. Ask an admin for editor access to add or change opportunities.
           </div>
         )}
         <main className="stack">

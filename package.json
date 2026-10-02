@@ -17,7 +17,12 @@
     "db:test": "bash supabase/tests/run.sh",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts && prettier --write src/lib/database.types.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "db:env": "node scripts/write-env-local.mjs",
+    "db:users": "node scripts/create-local-users.mjs",
+    "functions:serve": "supabase functions serve --env-file supabase/functions/.env.development",
+    "functions:logs": "docker logs --since 15m supabase_edge_runtime_cds-pipeline-board 2>&1 | grep \"sign-in code\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -31,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.10.2",
