@@ -1,0 +1,203 @@
+import {
+  computeFunnel,
+  computeInvoices,
+  computeOwners,
+  computeTargetBlock,
+  computeTiles,
+  type TargetBlockData,
+} from '@/lib/board/calculations'
+import { useBoard } from '@/lib/board/BoardProvider'
+import type { RefObject } from 'react'
+import { personName } from '@/lib/board/names'
+import { useSvgWidth } from '@/lib/board/useSvgWidth'
+import { fmtDate, fmtFull, fmtMonth, fmtRM, num } from '@/lib/format'
+
+function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: number; innerRef?: RefObject<HTMLElement> }) {
+  const H = 86
+  let x = 0
+  const bars = t.segs.map((s) => {
+    const w = (s.v / t.max) * W
+    const rect = (
+      <rect key={s.k} x={x} y={18} width={Math.max(0, w)} height={30} fill="var(--accent)" fillOpacity={s.o}>
+        <title>{s.k}: {fmtRM(s.v)}</title>
+      </rect>
+    )
+    x += w
+    return rect
+  })
+  const tx = (t.target / t.max) * W
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => (
+    <text key={f} x={f * W} y={H - 6} fill="var(--fg-3)" textAnchor={f === 0 ? 'start' : f === 1 ? 'end' : 'middle'} className="t-mono">
+      {fmtRM(t.max * f)}
+    </text>
+  ))
+  return (
+    <section className="block" ref={innerRef}>
+      <h2>{t.year} revenue against the {fmtRM(t.target)} target</h2>
+      <p className="lead">
+        Company-wide, all segments; filters do not apply here.{' '}
+        {t.financeAsOf ? `Finance figure as of ${fmtDate(t.financeAsOf)}.` : 'Finance figure not set yet.'} Open rows are {t.year} revenue-year rows not yet invoiced. The finance booked figure is not added to invoiced rows on this board.
+      </p>
+      <div className="target-head">
+        <div><span className="lab">Booked</span><span className="big">{fmtRM(t.booked)}</span></div>
+        <div><span className="lab">Gap to target</span><span className="big">{fmtRM(t.gap)}</span></div>
+        <div><span className="lab">LOA / PO in hand</span><span className="big">{fmtRM(t.loa)}</span></div>
+        <div><span className="lab">Gap after LOA / PO</span><span className="big">{fmtRM(Math.max(0, t.gap - t.loa))}</span></div>
+        <div><span className="lab">All open {t.year} pipeline</span><span className="big">{fmtRM(t.loa + t.verbal + t.quoted + t.early)}</span></div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label="Booked revenue and open pipeline against target">
+        <rect x={0} y={18} width={W} height={30} fill="var(--surface-2)" />
+        {bars}
+        <line x1={tx} x2={tx} y1={8} y2={56} stroke="var(--fg)" strokeWidth={2} />
+        <text x={tx} y={6} textAnchor={tx > W - 80 ? 'end' : 'middle'} fill="var(--fg)" fontWeight={600}>Target {fmtRM(t.target)}</text>
+        {ticks}
+      </svg>
+      <div className="legend">
+        {t.segs.map((s) => (
+          <span key={s.k}><i style={{ opacity: s.o }} />{s.k} <b className="mono">{fmtRM(s.v)}</b></span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function OverviewPageContent() {
+  const { data, filters } = useBoard()
+  const [targetRef, targetW] = useSvgWidth()
+  const [funnelRef, funnelW] = useSvgWidth()
+  const [invoiceRef, invoiceW] = useSvgWidth()
+
+  if (!data) return <div className="empty">Loading overview…</div>
+
+  const target = computeTargetBlock(data)
+  const tiles = computeTiles(data, filters)
+  const funnel = computeFunnel(data, filters)
+  const invoices = computeInvoices(data, filters)
+  const owners = computeOwners(data, filters, (id) => personName(data, id))
+  const yr = data.settings.year
+
+  const rowH = 34
+  const funnelH = funnel.rows.length * rowH + 8
+  const lx = 86
+  const bw = Math.max(60, funnelW - lx - 150)
+
+  const invH = 230
+  const y0 = 24
+  const base = 190
+  const bh = base - y0
+  const band = invoiceW / invoices.months.length
+  const barW = Math.min(70, band * 0.55)
+
+  return (
+    <div className="stack">
+      <TargetChart data={target} W={targetW} innerRef={targetRef} />
+      <div className="tiles">
+        {tiles.map((x) => (
+          <div key={x.k} className="tile">
+            <div className="k">{x.k}</div>
+            <div className="v">{x.v}</div>
+            <div className="n">{x.n}</div>
+          </div>
+        ))}
+      </div>
+      <section className="block" ref={funnelRef}>
+        <h2>Where the money sits, by stage</h2>
+        <p className="lead">Value and count at each stage for the current filters.</p>
+        <svg viewBox={`0 0 ${funnelW} ${funnelH}`} width={funnelW} role="img" aria-label="Pipeline value by stage">
+          {funnel.rows.map((d, k) => {
+            const y = k * rowH + 4
+            const w = (d.v / funnel.max) * bw
+            const op = 0.22 + 0.78 * (d.i / (funnel.stages.length - 1))
+            return (
+              <g key={d.s}>
+                <text x={0} y={y + 20} fill="var(--fg)">{d.s}</text>
+                <rect x={lx} y={y + 6} width={bw} height={20} fill="var(--surface-2)" />
+                <rect x={lx} y={y + 6} width={Math.max(d.v ? 2 : 0, w)} height={20} fill="var(--accent)" fillOpacity={op}>
+                  <title>{d.s}: {d.c} opportunities, {fmtRM(d.v)}</title>
+                </rect>
+                <text x={lx + bw + 10} y={y + 20} fill="var(--fg)" className="t-mono">{fmtRM(d.v)}</text>
+                <text x={funnelW} y={y + 20} fill="var(--fg-2)" textAnchor="end" className="t-mono">{d.c} {d.c === 1 ? 'deal' : 'deals'}</text>
+              </g>
+            )
+          })}
+        </svg>
+        <p className="small muted" style={{ margin: '10px 0 0' }}>
+          Lost: {funnel.lost.length} {funnel.lost.length === 1 ? 'deal' : 'deals'}, {fmtRM(funnel.lost.reduce((a, o) => a + num(o.value), 0))}.
+        </p>
+      </section>
+      <section className="block" ref={invoiceRef}>
+        <h2>Expected invoices, next six months</h2>
+        <p className="lead">By expected invoice month. The lighter part is work for a later revenue year invoiced early, which helps cash but not this year&apos;s number.</p>
+        <svg viewBox={`0 0 ${invoiceW} ${invH}`} width={invoiceW} role="img" aria-label="Expected invoices by month">
+          <line x1={0} x2={invoiceW} y1={base} y2={base} stroke="var(--line)" />
+          {invoices.rows.map((d, i) => {
+            const cx = i * band + band / 2
+            const ha = (d.a / invoices.max) * bh
+            const hb = (d.b / invoices.max) * bh
+            return (
+              <g key={d.m}>
+                <rect x={cx - barW / 2} y={base - ha} width={barW} height={ha} fill="var(--accent)">
+                  <title>{fmtMonth(d.m)}: {fmtRM(d.a)} {invoices.yr} revenue</title>
+                </rect>
+                <rect x={cx - barW / 2} y={base - ha - hb} width={barW} height={hb} fill="var(--accent)" fillOpacity={0.32}>
+                  <title>{fmtMonth(d.m)}: {fmtRM(d.b)} later-year work billed early</title>
+                </rect>
+                <text x={cx} y={base - ha - hb - 7} textAnchor="middle" fill="var(--fg)" className="t-mono">{d.a + d.b ? fmtRM(d.a + d.b) : ''}</text>
+                <text x={cx} y={base + 18} textAnchor="middle" fill="var(--fg-2)">{fmtMonth(d.m)}</text>
+                <text x={cx} y={base + 34} textAnchor="middle" fill="var(--fg-3)" fontSize={11}>{d.c ? `${d.c} rows` : ''}</text>
+              </g>
+            )
+          })}
+          {invoices.rows.every((d) => !(d.a + d.b)) && (
+            <text x={invoiceW / 2} y={base / 2 + 10} textAnchor="middle" fill="var(--fg-2)">No expected invoice months entered for these months yet</text>
+          )}
+        </svg>
+        <div className="legend">
+          <span><i />{yr} revenue</span>
+          <span><i style={{ opacity: 0.32 }} />Later-year work</span>
+        </div>
+        <p className="small muted" style={{ margin: '8px 0 0' }}>
+          {invoices.none} open or invoiced {invoices.none === 1 ? 'row has' : 'rows have'} no expected invoice month.
+        </p>
+      </section>
+      <section className="block">
+        <h2>By owner</h2>
+        <p className="lead">Each person&apos;s committed {yr} number (set under Targets) beside what the board holds for them. Segment, year and search filters apply.</p>
+        {owners.length ? (
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Owner</th>
+                  <th className="r">Committed {yr}</th>
+                  <th className="r">On board for {yr}</th>
+                  <th className="r">LOA / won {yr}</th>
+                  <th className="r">Open deals</th>
+                  <th className="r">Open value</th>
+                  <th className="r">Overdue next steps</th>
+                  <th className="r">No next step</th>
+                </tr>
+              </thead>
+              <tbody>
+                {owners.map((x) => (
+                  <tr key={x.n}>
+                    <td>{x.n}</td>
+                    <td className="r num">{x.com != null ? fmtFull(x.com) : '—'}</td>
+                    <td className="r num">{fmtFull(x.tr)}</td>
+                    <td className="r num">{fmtFull(x.sec)}</td>
+                    <td className="r num">{x.oc}</td>
+                    <td className="r num">{fmtFull(x.ov)}</td>
+                    <td className={`r num${x.od ? ' overdue' : ''}`}>{x.od}</td>
+                    <td className="r num">{x.nn}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="empty">No opportunities yet.</div>
+        )}
+      </section>
+    </div>
+  )
+}

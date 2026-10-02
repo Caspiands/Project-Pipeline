@@ -16,7 +16,24 @@ vi.mock('@/lib/auth/functions', () => ({
   verifyCode: vi.fn(),
   FunctionError: class extends Error {},
 }))
-vi.mock('@/lib/supabase', () => ({ supabase: {} }))
+vi.mock('@/lib/supabase', () => {
+  const channel = { on: vi.fn().mockReturnThis(), subscribe: vi.fn() }
+  return {
+    supabase: {
+      channel: vi.fn(() => channel),
+      removeChannel: vi.fn(),
+      functions: { invoke: vi.fn() },
+    },
+  }
+})
+vi.mock('@/lib/board/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/board/api')>()
+  return {
+    ...actual,
+    fetchBoardData: vi.fn(async () => (await import('@/test/mockBoardData')).mockBoardData),
+    fetchAuditLog: vi.fn(async () => []),
+  }
+})
 
 const session = {
   access_token: 't',
@@ -109,9 +126,9 @@ describe('route guard', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Set your password' })).toBeInTheDocument()
   })
 
-  it('keeps a verified user out of the auth screens', () => {
+  it('keeps a verified user out of the auth screens', async () => {
     renderAt('/sign-in', verifiedAdmin)
-    expect(screen.getByRole('heading', { level: 2, name: 'Overview' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/revenue against the/)).toBeInTheDocument())
   })
 })
 
@@ -127,6 +144,7 @@ describe('board shell for a verified session', () => {
       'Prospects',
       'Targets',
       'Team & access',
+      'Audit log',
     ])
     expect(within(nav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('Bharg')).toBeInTheDocument()
@@ -150,12 +168,11 @@ describe('board shell for a verified session', () => {
     ['/pipeline', 'Pipeline'],
     ['/review', 'Pipeline review'],
     ['/prospects', 'Prospects not yet in the pipeline'],
-    ['/targets', 'Company target'],
-    ['/team', 'Team & access'],
-  ])('renders a placeholder at %s', (path, heading) => {
+    ['/targets', 'Company targets'],
+    ['/team', 'Logins'],
+  ])('renders the %s tab', async (path, heading) => {
     renderAt(path, verifiedAdmin)
-    expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument()
-    expect(screen.getByText(/Coming in phase/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument())
   })
 
   it('shows a not-found message for unknown addresses', () => {

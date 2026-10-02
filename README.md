@@ -4,13 +4,13 @@ One shared, live record of every sales opportunity at Caspian Digital Solutions,
 
 Built as a multi-user web app on **Supabase** (database, logins, live updates) with a **React** front end. Access is email + password plus a 6-digit code emailed to the user; the database releases no data until both steps pass.
 
-**Status: phases 1 to 3 of 10 are done** (project set-up, the database, and sign-in with the emailed code). The board's tabs are placeholders until phases 4 to 9. See `CURSOR_PROMPT.md` for the full specification and build order.
+**Status: phases 1 to 9 of 10 are done** (through audit log, CSV export and idle timeout). Phase 10 is production hardening and deploy. See `CURSOR_PROMPT.md` for the full specification and build order.
 
 ## What is in this repository
 
 | Path | What it is |
 |---|---|
-| `src/` | The React app (Vite + TypeScript). Routes, app shell, design tokens, theme toggle, sign-in screens and the route guard (`src/lib/auth/`). |
+| `src/` | The React app (Vite + TypeScript). All board tabs, opportunity drawer, filters, overview charts, prospects import, targets, team admin, audit log, CSV export and idle timeout (`src/lib/board/`). |
 | `e2e/` | End-to-end tests (Playwright) that run the real sign-in flow against the local stack. |
 | `scripts/` | Local-development helpers: write `.env.local`, create test logins. |
 | `src/lib/database.types.ts` | TypeScript types generated from the database schema. Do not edit by hand; run `npm run db:types`. |

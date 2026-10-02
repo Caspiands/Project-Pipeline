@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
+import { BoardLayout } from '@/components/BoardLayout'
 import { RequireVerified } from '@/components/RequireVerified'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ResetPage } from '@/pages/auth/ResetPage'
@@ -12,6 +13,7 @@ import { ProspectsPage } from '@/pages/board/ProspectsPage'
 import { ReviewPage } from '@/pages/board/ReviewPage'
 import { TargetsPage } from '@/pages/board/TargetsPage'
 import { TeamPage } from '@/pages/board/TeamPage'
+import { AuditPage } from '@/pages/board/AuditPage'
 
 /**
  * Every route from section 3 of the specification. The auth screens sit outside the guard; the
@@ -26,16 +28,22 @@ export const routes: RouteObject[] = [
     element: <RequireVerified />,
     children: [
       {
-        element: <AppShell />,
+        element: <BoardLayout />,
         children: [
-          { path: '/', element: <Navigate to="/overview" replace /> },
-          { path: '/overview', element: <OverviewPage /> },
-          { path: '/pipeline', element: <PipelinePage /> },
-          { path: '/review', element: <ReviewPage /> },
-          { path: '/prospects', element: <ProspectsPage /> },
-          { path: '/targets', element: <TargetsPage /> },
-          { path: '/team', element: <TeamPage /> },
-          { path: '*', element: <NotFoundPage /> },
+          {
+            element: <AppShell />,
+            children: [
+              { path: '/', element: <Navigate to="/overview" replace /> },
+              { path: '/overview', element: <OverviewPage /> },
+              { path: '/pipeline', element: <PipelinePage /> },
+              { path: '/review', element: <ReviewPage /> },
+              { path: '/prospects', element: <ProspectsPage /> },
+              { path: '/targets', element: <TargetsPage /> },
+              { path: '/team', element: <TeamPage /> },
+              { path: '/audit', element: <AuditPage /> },
+              { path: '*', element: <NotFoundPage /> },
+            ],
+          },
         ],
       },
     ],

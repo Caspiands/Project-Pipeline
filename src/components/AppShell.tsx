@@ -1,7 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { FilterBar } from './FilterBar'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '@/lib/auth/auth'
 import { useProfile } from '@/lib/auth/useProfile'
+import { useBoard } from '@/lib/board/BoardProvider'
 import { fmtTime } from '@/lib/format'
 
 export const TABS = [
@@ -11,6 +13,7 @@ export const TABS = [
   { to: '/prospects', label: 'Prospects', adminOnly: false },
   { to: '/targets', label: 'Targets', adminOnly: false },
   { to: '/team', label: 'Team & access', adminOnly: true },
+  { to: '/audit', label: 'Audit log', adminOnly: true },
 ] as const
 
 /**
@@ -19,6 +22,7 @@ export const TABS = [
  */
 export function AppShell() {
   const auth = useAuth()
+  const board = useBoard()
   const navigate = useNavigate()
   const profile = useProfile()
   const role = auth.status?.role ?? null
@@ -53,7 +57,7 @@ export function AppShell() {
               </button>
             </div>
             {canWrite && (
-              <button className="primary" type="button" disabled title="Available once the pipeline tab is built">
+              <button className="primary" type="button" onClick={() => board.openCreate()}>
                 Add opportunity
               </button>
             )}
@@ -73,6 +77,7 @@ export function AppShell() {
             You have view-only access. Ask an admin for editor access to add or change opportunities.
           </div>
         )}
+        <FilterBar />
         <main className="stack">
           <Outlet />
         </main>
