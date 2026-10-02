@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import {
   addPerson,
   addProspects,
+  adminManageLogin,
   fetchAuditLog,
   fetchBoardData,
   markReviewDone,
@@ -51,10 +52,16 @@ interface BoardContextValue {
   saveTargets: (settings: BoardData['settings'], commitments: { personId: string; year: number; amount: number | null }[]) => Promise<void>
   importProspects: (list: Parameters<typeof addProspects>[0]) => Promise<void>
   patchProspect: (id: string, patch: { status?: import('@/lib/stages').ProspectStatus; opportunityId?: string | null }) => Promise<void>
-  inviteUser: (p: { email: string; fullName: string; role: 'admin' | 'editor' | 'viewer' }) => Promise<void>
+  manageLogin: (p: {
+    personId?: string | null
+    userId?: string | null
+    email: string
+    password: string
+    role: 'admin' | 'editor' | 'viewer'
+  }) => Promise<void>
   patchProfile: (id: string, patch: { role?: 'admin' | 'editor' | 'viewer'; isActive?: boolean }) => Promise<void>
   addDealOwner: (p: { name: string; email?: string }) => Promise<void>
-  patchPerson: (id: string, patch: { isActive?: boolean; email?: string }) => Promise<void>
+  patchPerson: (id: string, patch: { isActive?: boolean; email?: string; name?: string }) => Promise<void>
   auditLog: ReturnType<typeof useQuery<import('./types').AuditEntry[]>>
   toast: string | null
   setToast: (msg: string | null) => void
@@ -164,20 +171,20 @@ export function BoardProvider({ children }: { children: ReactNode }) {
 
   const closeDrawer = useCallback(() => setDrawer(null), [])
 
-  const inviteUser = useCallback(async (p: { email: string; fullName: string; role: 'admin' | 'editor' | 'viewer' }) => {
-    const { error } = await supabase.functions.invoke('admin-invite', { body: p })
-    if (error) {
-      let msg = 'Could not send the invite.'
-      try {
-        const b = await error.context.json()
-        if (b?.error) msg = b.error
-      } catch {
-        /* ignore */
-      }
-      throw new Error(msg)
-    }
-    setToast('Invite sent.')
-  }, [])
+  const manageLogin = useCallback(
+    async (p: {
+      personId?: string | null
+      userId?: string | null
+      email: string
+      password: string
+      role: 'admin' | 'editor' | 'viewer'
+    }) => {
+      await adminManageLogin(p)
+      invalidate()
+      setToast('Login saved.')
+    },
+    [],
+  )
 
   const value = useMemo<BoardContextValue>(
     () => ({
@@ -212,7 +219,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         await updateProspect(id, patch as { status?: import('@/lib/stages').ProspectStatus; opportunityId?: string | null })
         invalidate()
       },
-      inviteUser,
+      manageLogin,
       patchProfile: async (id, patch) => {
         await updateProfile(id, patch)
         invalidate()
@@ -230,7 +237,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       toast,
       setToast,
     }),
-    [data, isLoading, error, filters, setFilters, drawer, openCreate, openEdit, closeDrawer, saveOppMut, deleteMut, auditLog, toast, inviteUser],
+    [data, isLoading, error, filters, setFilters, drawer, openCreate, openEdit, closeDrawer, saveOppMut, deleteMut, auditLog, toast, manageLogin],
   )
 
   return <BoardContext.Provider value={value}>{children}</BoardContext.Provider>

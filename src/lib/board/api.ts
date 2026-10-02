@@ -106,11 +106,32 @@ export async function addPerson(p: { name: string; email?: string }): Promise<vo
   if (error) throw new Error(error.message)
 }
 
-export async function updatePerson(id: string, patch: { isActive?: boolean; email?: string }): Promise<void> {
-  const row: { is_active?: boolean; email?: string | null } = {}
+export async function updatePerson(
+  id: string,
+  patch: { isActive?: boolean; email?: string; name?: string },
+): Promise<void> {
+  const row: { is_active?: boolean; email?: string | null; name?: string } = {}
   if ('isActive' in patch) row.is_active = patch.isActive
-  if ('email' in patch) row.email = patch.email || null
+  if ('email' in patch) row.email = patch.email?.trim() ? patch.email.trim() : null
+  if ('name' in patch) row.name = patch.name?.trim() ?? ''
   const { error } = await supabase.from('people').update(row).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function adminManageLogin(p: {
+  personId?: string | null
+  userId?: string | null
+  email: string
+  password: string
+  role: 'admin' | 'editor' | 'viewer'
+}): Promise<void> {
+  const { error } = await supabase.rpc('admin_manage_login', {
+    p_person_id: p.personId ?? undefined,
+    p_user_id: p.userId ?? undefined,
+    p_email: p.email.trim(),
+    p_password: p.password,
+    p_role: p.role,
+  })
   if (error) throw new Error(error.message)
 }
 

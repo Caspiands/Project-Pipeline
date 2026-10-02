@@ -494,6 +494,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_manage_login: {
+        Args: {
+          p_email: string
+          p_password: string
+          p_person_id?: string
+          p_role: Database['public']['Enums']['app_role']
+          p_user_id?: string
+        }
+        Returns: string
+      }
       app_current_role: { Args: Record<PropertyKey, never>; Returns: Database['public']['Enums']['app_role'] }
       can_read: { Args: Record<PropertyKey, never>; Returns: boolean }
       can_write: { Args: Record<PropertyKey, never>; Returns: boolean }
