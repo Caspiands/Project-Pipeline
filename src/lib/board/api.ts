@@ -2,6 +2,12 @@ import { supabase } from '@/lib/supabase'
 import { assembleBoardData, mapAudit, unmapOpp, unmapPros } from './mappers'
 import type { AuditEntry, BoardData, CompanySettings, OpportunityInput, Prospect } from './types'
 
+export interface OpportunityImportRowResult {
+  lineNumber: number
+  ok: boolean
+  error?: string
+}
+
 function must<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message)
   if (res.data == null) throw new Error('No data returned')
@@ -38,6 +44,21 @@ export async function fetchAuditLog(limit = 500): Promise<AuditEntry[]> {
   const { data, error } = await supabase.from('audit_log').select('*').order('at', { ascending: false }).limit(limit)
   if (error) throw new Error(error.message)
   return (data ?? []).map(mapAudit)
+}
+
+export async function importOpportunities(
+  rows: { lineNumber: number; input: OpportunityInput }[],
+): Promise<OpportunityImportRowResult[]> {
+  const results: OpportunityImportRowResult[] = []
+  for (const row of rows) {
+    try {
+      await saveOpportunity(row.input)
+      results.push({ lineNumber: row.lineNumber, ok: true })
+    } catch (e) {
+      results.push({ lineNumber: row.lineNumber, ok: false, error: (e as Error).message })
+    }
+  }
+  return results
 }
 
 export async function saveOpportunity(o: OpportunityInput): Promise<string> {

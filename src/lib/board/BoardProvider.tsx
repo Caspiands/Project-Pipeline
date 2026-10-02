@@ -7,6 +7,7 @@ import {
   adminManageLogin,
   fetchAuditLog,
   fetchBoardData,
+  importOpportunities,
   markReviewDone,
   saveCommitments,
   saveOpportunity,
@@ -52,6 +53,7 @@ interface BoardContextValue {
   saveTargets: (settings: BoardData['settings'], commitments: { personId: string; year: number; amount: number | null }[]) => Promise<void>
   importProspects: (list: Parameters<typeof addProspects>[0]) => Promise<void>
   patchProspect: (id: string, patch: { status?: import('@/lib/stages').ProspectStatus; opportunityId?: string | null }) => Promise<void>
+  importPipelineRows: (rows: { lineNumber: number; input: import('./types').OpportunityInput }[]) => Promise<import('./api').OpportunityImportRowResult[]>
   manageLogin: (p: {
     personId?: string | null
     userId?: string | null
@@ -218,6 +220,11 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       patchProspect: async (id, patch) => {
         await updateProspect(id, patch as { status?: import('@/lib/stages').ProspectStatus; opportunityId?: string | null })
         invalidate()
+      },
+      importPipelineRows: async (rows) => {
+        const results = await importOpportunities(rows)
+        invalidate()
+        return results
       },
       manageLogin,
       patchProfile: async (id, patch) => {
