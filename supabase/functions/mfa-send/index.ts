@@ -51,18 +51,14 @@ serve(async (req) => {
   return json({ sent: true, email_hint: maskEmail(email), expires_in_seconds: MFA.codeMinutes * 60 });
 });
 
+function parseSender(from: string): { name: string; email: string } {
+  const m = from.match(/^(.+?)\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1].trim(), email: m[2].trim() };
+  return { name: "CDS Pipeline", email: from.trim() };
+}
+
 async function sendEmail(to: string, code: string, minutes: number): Promise<boolean> {
-  const key = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("MFA_FROM_EMAIL") ?? "CDS Pipeline <no-reply@caspiands.com>";
-  if (!key) {
-    if (Deno.env.get("MFA_DEV_LOG_CODES") === "true") {
-      // Local development only: never set MFA_DEV_LOG_CODES in production.
-      console.log(`[dev] sign-in code for ${to}: ${code}`);
-      return true;
-    }
-    console.error("RESEND_API_KEY is not set");
-    return false;
-  }
+  const fromRaw = Deno.env.get("MFA_FROM_EMAIL") ?? "CDS Pipeline <no-reply@caspiands.com>";
   const spaced = `${code.slice(0, 3)} ${code.slice(3)}`;
   const text =
     `Your CDS Pipeline Board sign-in code is ${spaced}.\n\n` +
@@ -75,10 +71,39 @@ async function sendEmail(to: string, code: string, minutes: number): Promise<boo
     <p>It expires in ${minutes} minutes and works once.</p>
     <p style="color:#56645d;font-size:13px">If you did not try to sign in, ignore this email and tell the board admin; someone may know your password.</p>
   </div>`;
+  const subject = "Your CDS Pipeline sign-in code";
+
+  const brevoKey = Deno.env.get("BREVO_API_KEY");
+  if (brevoKey) {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": brevoKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: parseSender(fromRaw),
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+        htmlContent: html,
+      }),
+    });
+    if (!res.ok) console.error("Brevo error", res.status, await res.text());
+    return res.ok;
+  }
+
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key) {
+    if (Deno.env.get("MFA_DEV_LOG_CODES") === "true") {
+      // Local development only: never set MFA_DEV_LOG_CODES in production.
+      console.log(`[dev] sign-in code for ${to}: ${code}`);
+      return true;
+    }
+    console.error("RESEND_API_KEY is not set");
+    return false;
+  }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [to], subject: "Your CDS Pipeline sign-in code", text, html }),
+    body: JSON.stringify({ from: fromRaw, to: [to], subject, text, html }),
   });
   if (!res.ok) console.error("Resend error", res.status, await res.text());
   return res.ok;
