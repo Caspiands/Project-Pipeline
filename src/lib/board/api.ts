@@ -91,14 +91,12 @@ export async function updateProspect(id: string, patch: { status?: Prospect['sta
   if (error) throw new Error(error.message)
 }
 
-export async function saveSettings(s: CompanySettings): Promise<void> {
+export async function saveSettings(s: Pick<CompanySettings, 'year' | 'target'>): Promise<void> {
   const { error } = await supabase
     .from('settings')
     .update({
       target_year: s.year,
       annual_target: s.target,
-      finance_revenue: s.financeRevenue,
-      finance_as_of: s.financeAsOf || null,
     })
     .eq('id', 1)
   if (error) throw new Error(error.message)

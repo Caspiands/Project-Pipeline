@@ -3,6 +3,7 @@
  */
 import { fmtInt, fmtRM, monthKey, num, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage, STAGES } from '@/lib/stages'
+import { computeFinanceBooked, FINANCE_BOOKED_RULE } from './financeBooked'
 import { filterOpportunities, isOverdue } from './filters'
 import type { BoardData, BoardFilters, Opportunity } from './types'
 
@@ -14,7 +15,11 @@ export function lastReviewAt(data: BoardData): string {
 export interface TargetBlockData {
   year: number
   target: number
-  booked: number
+  booked: number | null
+  bookedForGap: number
+  countLoaPo: number
+  countInvoicedPaid: number
+  financeBookedRule: string
   gap: number
   loa: number
   verbal: number
@@ -22,23 +27,24 @@ export interface TargetBlockData {
   early: number
   segs: { k: string; v: number; o: number }[]
   max: number
-  financeAsOf: string
 }
 
 export function computeTargetBlock(data: BoardData): TargetBlockData {
   const st = data.settings
   const yr = st.year
   const target = num(st.target)
-  const booked = num(st.financeRevenue)
+  const finance = computeFinanceBooked(data, yr)
+  const booked = finance.total
+  const bookedForGap = booked ?? 0
   const rows = data.opps.filter((o) => String(o.revenueYear) === String(yr) && isOpenStage(o.stage))
   const by = (s: string) => rows.filter((o) => o.stage === s).reduce((a, o) => a + num(o.value), 0)
   const loa = by('LOA/PO')
   const verbal = by('Verbal yes')
   const quoted = by('Quote sent')
   const early = by('Proposal') + by('Lead')
-  const gap = Math.max(0, target - booked)
+  const gap = Math.max(0, target - bookedForGap)
   const segs = [
-    { k: 'Booked (finance)', v: booked, o: 1 },
+    { k: 'Finance revenue booked', v: bookedForGap, o: 1 },
     { k: 'LOA / PO in hand', v: loa, o: 0.62 },
     { k: 'Verbal yes', v: verbal, o: 0.42 },
     { k: 'Quote sent', v: quoted, o: 0.26 },
@@ -46,7 +52,22 @@ export function computeTargetBlock(data: BoardData): TargetBlockData {
   ]
   const total = segs.reduce((a, s) => a + s.v, 0)
   const max = Math.max(target, total) * 1.04 || 1
-  return { year: yr, target, booked, gap, loa, verbal, quoted, early, segs, max, financeAsOf: st.financeAsOf }
+  return {
+    year: yr,
+    target,
+    booked,
+    bookedForGap,
+    countLoaPo: finance.countLoaPo,
+    countInvoicedPaid: finance.countInvoicedPaid,
+    financeBookedRule: FINANCE_BOOKED_RULE,
+    gap,
+    loa,
+    verbal,
+    quoted,
+    early,
+    segs,
+    max,
+  }
 }
 
 export function computeTiles(data: BoardData, filters: BoardFilters) {

@@ -12,7 +12,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import type { RefObject } from 'react'
 import { personName } from '@/lib/board/names'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
-import { fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num } from '@/lib/format'
+import { fmtFull, fmtInt, fmtMonth, fmtRM, num } from '@/lib/format'
 import { ValuePieChart } from './ValuePieChart'
 import { YearOnYearAccounts } from './YearOnYearAccounts'
 
@@ -39,11 +39,16 @@ function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: numbe
     <section className="block" ref={innerRef}>
       <h2>{t.year} revenue against the {fmtRM(t.target)} target</h2>
       <p className="lead">
-        Company-wide, all segments; filters do not apply here.{' '}
-        {t.financeAsOf ? `Finance figure as of ${fmtDate(t.financeAsOf)}.` : 'Finance figure not set yet.'} Open rows are {t.year} revenue-year rows not yet invoiced. The finance booked figure is not added to invoiced rows on this board.
+        Company-wide, all segments; filters do not apply here. {t.financeBookedRule} Open rows are {t.year} revenue-year rows not yet invoiced.
       </p>
       <div className="target-head">
-        <div><span className="lab">Booked</span><span className="big">{fmtRM(t.booked)}</span></div>
+        <div>
+          <span className="lab">Finance revenue booked</span>
+          <span className="big">{fmtRM(t.booked)}</span>
+          <span className="small muted">
+            {fmtInt(t.countLoaPo)} LOA/PO · {fmtInt(t.countInvoicedPaid)} Invoiced or Paid
+          </span>
+        </div>
         <div><span className="lab">Gap to target</span><span className="big">{fmtRM(t.gap)}</span></div>
         <div><span className="lab">LOA / PO in hand</span><span className="big">{fmtRM(t.loa)}</span></div>
         <div><span className="lab">Gap after LOA / PO</span><span className="big">{fmtRM(Math.max(0, t.gap - t.loa))}</span></div>
@@ -57,8 +62,12 @@ function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: numbe
         {ticks}
       </svg>
       <div className="legend">
-        {t.segs.map((s) => (
-          <span key={s.k}><i style={{ opacity: s.o }} />{s.k} <b className="mono">{fmtRM(s.v)}</b></span>
+        {t.segs.map((s, i) => (
+          <span key={s.k}>
+            <i style={{ opacity: s.o }} />
+            {s.k}{' '}
+            <b className="mono">{i === 0 ? fmtRM(t.booked) : fmtRM(s.v)}</b>
+          </span>
         ))}
       </div>
     </section>
