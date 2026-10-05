@@ -6,11 +6,14 @@ import {
   computeTiles,
   type TargetBlockData,
 } from '@/lib/board/calculations'
+import { filterOpportunities } from '@/lib/board/filters'
+import { pieByOwner, pieBySegment, pieByStage } from '@/lib/board/overviewPies'
 import { useBoard } from '@/lib/board/BoardProvider'
 import type { RefObject } from 'react'
 import { personName } from '@/lib/board/names'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
 import { fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num } from '@/lib/format'
+import { ValuePieChart } from './ValuePieChart'
 
 function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: number; innerRef?: RefObject<HTMLElement> }) {
   const H = 86
@@ -64,6 +67,7 @@ function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: numbe
 export function OverviewPageContent() {
   const { data, filters } = useBoard()
   const [targetRef, targetW] = useSvgWidth()
+  const [pieRef, pieW] = useSvgWidth()
   const [funnelRef, funnelW] = useSvgWidth()
   const [invoiceRef, invoiceW] = useSvgWidth()
 
@@ -75,6 +79,9 @@ export function OverviewPageContent() {
   const invoices = computeInvoices(data, filters)
   const owners = computeOwners(data, filters, (id) => personName(data, id))
   const yr = data.settings.year
+  const pieRows = filterOpportunities(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const pieColW = Math.max(240, Math.floor(pieW / 3) - 8)
+  const pn = (id: string | null) => personName(data, id)
 
   const rowH = 34
   const funnelH = funnel.rows.length * rowH + 8
@@ -100,6 +107,15 @@ export function OverviewPageContent() {
           </div>
         ))}
       </div>
+      <section className="block" ref={pieRef}>
+        <h2>Value breakdown</h2>
+        <p className="lead">Share of value in the filtered pipeline (raw totals, not weighted).</p>
+        <div className="grid g3 pies">
+          <ValuePieChart title="By stage" rows={pieByStage(pieRows)} width={pieColW} />
+          <ValuePieChart title="By segment" rows={pieBySegment(pieRows)} width={pieColW} />
+          <ValuePieChart title="By owner" rows={pieByOwner(pieRows, pn)} width={pieColW} />
+        </div>
+      </section>
       <section className="block" ref={funnelRef}>
         <h2>Where the money sits, by stage</h2>
         <p className="lead">Value and count at each stage for the current filters.</p>

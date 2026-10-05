@@ -1,8 +1,14 @@
 import { useLocation } from 'react-router-dom'
 import { useBoard } from '@/lib/board/BoardProvider'
+import {
+  distinctInvoiceMonths,
+  distinctQuarters,
+  distinctQuoteMonths,
+  quarterLabel,
+} from '@/lib/board/dateFilters'
 import { filterOpportunities } from '@/lib/board/filters'
 import { activePeople } from '@/lib/board/names'
-import { fmtInt } from '@/lib/format'
+import { fmtInt, fmtMonth } from '@/lib/format'
 import { STAGES } from '@/lib/stages'
 
 const HIDE_ON = ['/targets', '/prospects', '/team', '/audit']
@@ -18,6 +24,10 @@ export function FilterBar() {
   const ownerValue = [...people.map((p) => p.id), 'none', 'all'].includes(filters.owner) ? filters.owner : 'all'
 
   const years = [...new Set(data.opps.map((o) => String(o.revenueYear)))].sort()
+  const invoiceMonths = distinctInvoiceMonths(data.opps)
+  const invoiceQuarters = distinctQuarters(invoiceMonths)
+  const quoteMonths = distinctQuoteMonths(data.opps)
+  const quoteQuarters = distinctQuarters(quoteMonths)
 
   return (
     <div className="filters" data-testid="filter-bar">
@@ -57,6 +67,50 @@ export function FilterBar() {
           onChange={(e) => setFilters({ q: e.target.value })}
           placeholder="Account, item, quote, notes"
         />
+      </label>
+      <label>
+        Invoice month
+        <select value={filters.invoiceMonth} onChange={(e) => setFilters({ invoiceMonth: e.target.value })}>
+          <option value="all">Any</option>
+          {invoiceMonths.map((m) => (
+            <option key={m} value={m}>{fmtMonth(m)}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Invoice quarter
+        <select value={filters.invoiceQuarter} onChange={(e) => setFilters({ invoiceQuarter: e.target.value })}>
+          <option value="all">Any</option>
+          {invoiceQuarters.map((q) => (
+            <option key={q} value={q}>{quarterLabel(q)}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Quote from
+        <input type="date" value={filters.quoteFrom} onChange={(e) => setFilters({ quoteFrom: e.target.value })} />
+      </label>
+      <label>
+        Quote to
+        <input type="date" value={filters.quoteTo} onChange={(e) => setFilters({ quoteTo: e.target.value })} />
+      </label>
+      <label>
+        Quote month
+        <select value={filters.quoteMonth} onChange={(e) => setFilters({ quoteMonth: e.target.value })}>
+          <option value="all">Any</option>
+          {quoteMonths.map((m) => (
+            <option key={m} value={m}>{fmtMonth(m)}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Quote quarter
+        <select value={filters.quoteQuarter} onChange={(e) => setFilters({ quoteQuarter: e.target.value })}>
+          <option value="all">Any</option>
+          {quoteQuarters.map((q) => (
+            <option key={q} value={q}>{quarterLabel(q)}</option>
+          ))}
+        </select>
       </label>
       {pathname.startsWith('/pipeline') && (
         <>

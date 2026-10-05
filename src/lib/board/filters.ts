@@ -1,5 +1,6 @@
 import { isOpenStage } from '@/lib/stages'
 import { todayISO } from '@/lib/format'
+import { invoiceMonthKey, monthKeyFromDate, quarterKeyFromMonth } from './dateFilters'
 import type { BoardData, BoardFilters, Opportunity } from './types'
 
 export interface FilterOptions {
@@ -27,6 +28,28 @@ export function filterOpportunities(
     if (q) {
       const hay = `${o.account} ${o.item} ${o.quoteNo} ${o.notes}`.toLowerCase()
       if (!hay.includes(q)) return false
+    }
+    if (filters.invoiceMonth !== 'all') {
+      const im = invoiceMonthKey(o.invoiceMonth)
+      if (im !== filters.invoiceMonth) return false
+    }
+    if (filters.invoiceQuarter !== 'all') {
+      const im = invoiceMonthKey(o.invoiceMonth)
+      if (!im || quarterKeyFromMonth(im) !== filters.invoiceQuarter) return false
+    }
+    if (filters.quoteFrom) {
+      if (!o.quoteDate || o.quoteDate < filters.quoteFrom) return false
+    }
+    if (filters.quoteTo) {
+      if (!o.quoteDate || o.quoteDate > filters.quoteTo) return false
+    }
+    if (filters.quoteMonth !== 'all') {
+      const qm = monthKeyFromDate(o.quoteDate)
+      if (qm !== filters.quoteMonth) return false
+    }
+    if (filters.quoteQuarter !== 'all') {
+      const qm = monthKeyFromDate(o.quoteDate)
+      if (!qm || quarterKeyFromMonth(qm) !== filters.quoteQuarter) return false
     }
     return true
   })

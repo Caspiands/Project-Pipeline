@@ -121,6 +121,12 @@ export interface BoardFilters {
   lost: boolean
   stage: 'all' | Stage
   pstatus: 'all' | ProspectStatus
+  invoiceMonth: 'all' | string
+  invoiceQuarter: 'all' | string
+  quoteFrom: string
+  quoteTo: string
+  quoteMonth: 'all' | string
+  quoteQuarter: 'all' | string
 }
 
 export const DEFAULT_FILTERS: BoardFilters = {
@@ -131,6 +137,12 @@ export const DEFAULT_FILTERS: BoardFilters = {
   lost: false,
   stage: 'all',
   pstatus: 'all',
+  invoiceMonth: 'all',
+  invoiceQuarter: 'all',
+  quoteFrom: '',
+  quoteTo: '',
+  quoteMonth: 'all',
+  quoteQuarter: 'all',
 }
 
 export const TECH_BOARD_URL = 'https://claude.ai/artifact/WM8QSCNFVFuy5P88C7D5Bv'
