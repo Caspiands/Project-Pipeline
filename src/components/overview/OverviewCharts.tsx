@@ -14,6 +14,7 @@ import { personName } from '@/lib/board/names'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
 import { fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num } from '@/lib/format'
 import { ValuePieChart } from './ValuePieChart'
+import { YearOnYearAccounts } from './YearOnYearAccounts'
 
 function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: number; innerRef?: RefObject<HTMLElement> }) {
   const H = 86
@@ -116,6 +117,7 @@ export function OverviewPageContent() {
           <ValuePieChart title="By owner" rows={pieByOwner(pieRows, pn)} width={pieColW} />
         </div>
       </section>
+      <YearOnYearAccounts data={data} filters={filters} />
       <section className="block" ref={funnelRef}>
         <h2>Where the money sits, by stage</h2>
         <p className="lead">Value and count at each stage for the current filters.</p>
