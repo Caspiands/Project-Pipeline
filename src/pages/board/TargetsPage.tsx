@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { computeFinanceBooked, FINANCE_BOOKED_RULE } from '@/lib/board/financeBooked'
 import { activePeople } from '@/lib/board/names'
+import { RmAmountStringInput } from '@/components/RmAmountInput'
 import { fmtFull, fmtInt, fmtRM } from '@/lib/format'
 
 export function TargetsPage() {
@@ -53,7 +54,7 @@ export function TargetsPage() {
         <p className="lead">Annual target for the overview target block. Finance revenue booked is calculated from the pipeline.</p>
         <div className="kv" id="setForm">
           <div className="field"><span>Target year</span><input type="number" disabled={!isAdmin} value={year} onChange={(e) => setYear(Number(e.target.value))} id="st_year" /></div>
-          <div className="field"><span>Annual target (RM)</span><input type="number" min={0} step={1000} disabled={!isAdmin} value={target} onChange={(e) => setTarget(e.target.value)} id="st_target" /></div>
+          <div className="field"><span>Annual target (RM)</span><RmAmountStringInput disabled={!isAdmin} value={target} onChange={setTarget} id="st_target" /></div>
         </div>
         <div className="block" style={{ marginTop: 16, padding: 12, border: '1px solid var(--line)' }}>
           <p className="small" style={{ margin: '0 0 10px' }}>{FINANCE_BOOKED_RULE}</p>
@@ -77,14 +78,11 @@ export function TargetsPage() {
                   <td>{p.name}</td>
                   <td className="r">
                     {isAdmin ? (
-                      <input
-                        type="number"
-                        min={0}
-                        step={1000}
+                      <RmAmountStringInput
                         style={{ width: 160, textAlign: 'right' }}
                         aria-label={`Commitment for ${p.name}`}
                         value={com[p.id] ?? ''}
-                        onChange={(e) => setCom({ ...com, [p.id]: e.target.value })}
+                        onChange={(v) => setCom({ ...com, [p.id]: v })}
                       />
                     ) : (
                       <span className="num">{com[p.id] ? fmtFull(Number(com[p.id])) : '—'}</span>

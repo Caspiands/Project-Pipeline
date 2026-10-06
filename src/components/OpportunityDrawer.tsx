@@ -4,6 +4,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import { activePeople, profileName } from '@/lib/board/names'
 import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
 import { sumInvoiceAmounts } from '@/lib/board/invoices'
+import { RmAmountInput } from '@/components/RmAmountInput'
 import { fmtDate, fmtRM, fmtRMCents } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
 import type { Opportunity, OpportunityInput, OpportunityInvoiceInput } from '@/lib/board/types'
@@ -218,13 +219,10 @@ export function OpportunityDrawer() {
                 <div className="invoice-line" key={inv.id ?? `new-${idx}`}>
                   <div className="field">
                     <span>Amount (RM)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
+                    <RmAmountInput
                       disabled={!canWrite}
-                      value={inv.amount ?? ''}
-                      onChange={(e) => setInvoice(idx, { amount: e.target.value === '' ? null : Number(e.target.value) })}
+                      value={inv.amount}
+                      onChange={(amount) => setInvoice(idx, { amount })}
                     />
                   </div>
                   <div className="field">
