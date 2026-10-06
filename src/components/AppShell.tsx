@@ -13,6 +13,7 @@ import { fmtTime } from '@/lib/format'
 export const TABS = [
   { to: '/overview', label: 'Overview', adminOnly: false },
   { to: '/pipeline', label: 'Pipeline', adminOnly: false },
+  { to: '/open-pipeline', label: 'Open pipeline', adminOnly: false },
   { to: '/review', label: 'Review', adminOnly: false },
   { to: '/prospects', label: 'Prospects', adminOnly: false },
   { to: '/targets', label: 'Targets', adminOnly: false },

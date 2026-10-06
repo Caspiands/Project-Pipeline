@@ -1,0 +1,100 @@
+import { useMemo, useState } from 'react'
+import { OpenPipelineFiltersBar } from '@/components/OpenPipelineFilters'
+import { PipelineTable, sortPipelineRows, type PipelineSortKey } from '@/components/PipelineTable'
+import { useAuth } from '@/lib/auth/auth'
+import { useBoard } from '@/lib/board/BoardProvider'
+import { sumInvoiceAmounts } from '@/lib/board/invoices'
+import {
+  computeOpenPipelineSummary,
+  computeOpenPipelineViews,
+  DEFAULT_OPEN_PIPELINE_FILTERS,
+  type OpenPipelineFilters,
+} from '@/lib/board/openPipeline'
+import { fmtInt, fmtRM } from '@/lib/format'
+
+export function OpenPipelinePage() {
+  const board = useBoard()
+  const auth = useAuth()
+  const canWrite = auth.status?.role === 'admin' || auth.status?.role === 'editor'
+  const { data, openEdit, patchOppStage, setToast } = board
+  const [narrow, setNarrow] = useState<OpenPipelineFilters>(DEFAULT_OPEN_PIPELINE_FILTERS)
+  const [sort, setSort] = useState<{ key: PipelineSortKey; dir: 1 | -1 }>({ key: 'account', dir: 1 })
+
+  const allOpenViews = useMemo(() => {
+    if (!data) return []
+    return computeOpenPipelineViews(data, DEFAULT_OPEN_PIPELINE_FILTERS)
+  }, [data])
+
+  const views = useMemo(() => {
+    if (!data) return []
+    return computeOpenPipelineViews(data, narrow)
+  }, [data, narrow])
+
+  const viewById = useMemo(() => new Map(views.map((v) => [v.deal.id, v])), [views])
+
+  const rows = useMemo(() => {
+    if (!data) return []
+    const deals = views.map((v) => v.deal)
+    return sortPipelineRows(deals, sort, data, viewById, true)
+  }, [data, views, sort, viewById])
+
+  const summary = useMemo(() => computeOpenPipelineSummary(views), [views])
+  const total = useMemo(() => sumInvoiceAmounts(views.flatMap((v) => v.invoices)), [views])
+
+  if (!data) {
+    return <div className="empty">Loading open pipeline…</div>
+  }
+
+  const setNarrowPatch = (patch: Partial<OpenPipelineFilters>) => setNarrow((f) => ({ ...f, ...patch }))
+
+  return (
+    <div className="stack">
+      <OpenPipelineFiltersBar
+        filters={narrow}
+        onChange={setNarrowPatch}
+        matchCount={summary.dealCount}
+        dealTotal={allOpenViews.length}
+      />
+      <section className="block">
+        <header className="row">
+          <div>
+            <h2>Open pipeline</h2>
+            <p className="lead">Every deal with open invoice lines (Lead through LOA/PO), all revenue years.</p>
+          </div>
+        </header>
+        <div className="tiles" style={{ marginBottom: 16 }}>
+          <div className="tile">
+            <div className="k">Total open pipeline</div>
+            <div className="v">{fmtRM(summary.totalRm)}</div>
+            <div className="n">
+              {fmtInt(summary.invoiceCount)} open {summary.invoiceCount === 1 ? 'invoice' : 'invoices'} ·{' '}
+              {fmtInt(summary.dealCount)} {summary.dealCount === 1 ? 'deal' : 'deals'}
+            </div>
+          </div>
+          {summary.byStage
+            .filter((s) => s.count > 0)
+            .map((s) => (
+              <div className="tile" key={s.stage}>
+                <div className="k">{s.stage}</div>
+                <div className="v">{fmtRM(s.total)}</div>
+                <div className="n">{fmtInt(s.count)} {s.count === 1 ? 'invoice' : 'invoices'}</div>
+              </div>
+            ))}
+        </div>
+        <PipelineTable
+          rows={rows}
+          viewById={viewById}
+          sort={sort}
+          onSort={setSort}
+          total={total}
+          canWrite={canWrite}
+          onRowClick={openEdit}
+          onStageChange={patchOppStage}
+          setToast={setToast}
+          stageDaysFromViewInvoices
+          emptyMessage={allOpenViews.length ? 'No open deals match these filters.' : 'No open pipeline right now.'}
+        />
+      </section>
+    </div>
+  )
+}

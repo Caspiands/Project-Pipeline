@@ -140,6 +140,7 @@ describe('board shell for a verified session', () => {
     expect(links.map((l) => l.textContent)).toEqual([
       'Overview',
       'Pipeline',
+      'Open pipeline',
       'Review',
       'Prospects',
       'Targets',
@@ -166,6 +167,7 @@ describe('board shell for a verified session', () => {
 
   it.each([
     ['/pipeline', 'Pipeline'],
+    ['/open-pipeline', 'Open pipeline'],
     ['/review', 'Pipeline review'],
     ['/prospects', 'Prospects not yet in the pipeline'],
     ['/targets', 'Company targets'],

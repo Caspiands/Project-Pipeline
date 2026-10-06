@@ -7,6 +7,7 @@ import { SetPasswordPage } from '@/pages/auth/SetPasswordPage'
 import { SignInPage } from '@/pages/auth/SignInPage'
 import { VerifyPage } from '@/pages/auth/VerifyPage'
 import { OverviewPage } from '@/pages/board/OverviewPage'
+import { OpenPipelinePage } from '@/pages/board/OpenPipelinePage'
 import { PipelinePage } from '@/pages/board/PipelinePage'
 import { ProspectsPage } from '@/pages/board/ProspectsPage'
 import { ReviewPage } from '@/pages/board/ReviewPage'
@@ -32,6 +33,7 @@ export const routes: RouteObject[] = [
           { path: '/', element: <Navigate to="/overview" replace /> },
           { path: '/overview', element: <OverviewPage /> },
           { path: '/pipeline', element: <PipelinePage /> },
+          { path: '/open-pipeline', element: <OpenPipelinePage /> },
           { path: '/review', element: <ReviewPage /> },
           { path: '/prospects', element: <ProspectsPage /> },
           { path: '/targets', element: <TargetsPage /> },

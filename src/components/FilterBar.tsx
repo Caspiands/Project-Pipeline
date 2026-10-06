@@ -12,7 +12,7 @@ import { uniqueAccountsSorted } from '@/lib/board/owners'
 import { fmtInt, fmtMonth } from '@/lib/format'
 import { STAGES } from '@/lib/stages'
 
-const HIDE_ON = ['/targets', '/prospects', '/team', '/audit']
+const HIDE_ON = ['/targets', '/prospects', '/team', '/audit', '/open-pipeline']
 
 export function FilterBar() {
   const { pathname } = useLocation()

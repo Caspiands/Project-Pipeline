@@ -78,7 +78,11 @@ export function dealHasWonInvoice(deal: Opportunity): boolean {
 }
 
 export function primaryStageSince(deal: Opportunity): string | null {
-  const dates = deal.invoices.map((i) => i.stageSince).filter(Boolean) as string[]
+  return primaryStageSinceInvoices(deal.invoices)
+}
+
+export function primaryStageSinceInvoices(invoices: OpportunityInvoice[]): string | null {
+  const dates = invoices.map((i) => i.stageSince).filter(Boolean) as string[]
   if (!dates.length) return null
   return dates.sort()[0]
 }

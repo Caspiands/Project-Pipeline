@@ -5,7 +5,7 @@ import { activePeople, profileName } from '@/lib/board/names'
 import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
 import { sumInvoiceAmounts } from '@/lib/board/invoices'
 import { RmAmountInput } from '@/components/RmAmountInput'
-import { fmtDate, fmtRM, fmtRMCents } from '@/lib/format'
+import { fmtDate, fmtRMCents } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
 import type { Opportunity, OpportunityInput, OpportunityInvoiceInput } from '@/lib/board/types'
 
