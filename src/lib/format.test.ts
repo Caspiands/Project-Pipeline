@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, num, todayISO } from './format'
+import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth, fmtRM, fmtRMCents, num, todayISO } from './format'
 
 describe('fmtRM (money on screen)', () => {
   it('uses full amounts with en-GB grouping and an RM prefix', () => {
@@ -11,6 +11,12 @@ describe('fmtRM (money on screen)', () => {
   it('shows a dash when the value is not known', () => {
     expect(fmtRM(null)).toBe('—')
     expect(fmtRM(undefined)).toBe('—')
+  })
+})
+
+describe('fmtRMCents', () => {
+  it('always shows two decimal places', () => {
+    expect(fmtRMCents(164801.5)).toBe('RM 164,801.50')
   })
 })
 

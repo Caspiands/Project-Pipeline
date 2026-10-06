@@ -4,7 +4,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import { activePeople, profileName } from '@/lib/board/names'
 import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
 import { sumInvoiceAmounts } from '@/lib/board/invoices'
-import { fmtDate, fmtRM } from '@/lib/format'
+import { fmtDate, fmtRM, fmtRMCents } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
 import type { Opportunity, OpportunityInput, OpportunityInvoiceInput } from '@/lib/board/types'
 
@@ -211,7 +211,7 @@ export function OpportunityDrawer() {
           <div className="field full invoice-block">
             <div className="invoice-block-head">
               <span>Invoices</span>
-              <span className="small muted">Deal total: {fmtRM(dealTotal)}</span>
+              <span className="small muted">Deal total: {fmtRMCents(dealTotal)}</span>
             </div>
             <div className="invoice-lines">
               {form.invoices.map((inv, idx) => (
@@ -221,7 +221,7 @@ export function OpportunityDrawer() {
                     <input
                       type="number"
                       min={0}
-                      step={100}
+                      step="0.01"
                       disabled={!canWrite}
                       value={inv.amount ?? ''}
                       onChange={(e) => setInvoice(idx, { amount: e.target.value === '' ? null : Number(e.target.value) })}

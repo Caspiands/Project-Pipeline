@@ -42,6 +42,15 @@ export function fmtRM(n: number | null | undefined): string {
   return 'RM ' + formatAmount(n)
 }
 
+/** Money with RM prefix, always two decimal places (deal totals, typed amounts). */
+export function fmtRMCents(n: number | null | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—'
+  return (
+    'RM ' +
+    n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  )
+}
+
 /** Table money (no prefix): 262,000. Dash when blank; never turns null into zero. */
 export function fmtFull(n: number | string | null | undefined): string {
   if (n == null || n === '') return '—'
