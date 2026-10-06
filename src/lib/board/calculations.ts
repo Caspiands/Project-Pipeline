@@ -3,7 +3,7 @@
  */
 import { fmtInt, fmtRM, monthKey, num, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage, STAGES } from '@/lib/stages'
-import { computeFinanceBooked, FINANCE_BOOKED_RULE } from './financeBooked'
+import { FINANCE_BOOKED_RULE } from './financeBooked'
 import { filterOpportunityViews, isOverdue } from './filters'
 import { sumInvoiceAmounts } from './invoices'
 import type { BoardData, BoardFilters, Opportunity, OpportunityInvoice } from './types'
@@ -41,17 +41,35 @@ function openInvoicesForYear(views: ReturnType<typeof filterOpportunityViews>, y
   return out
 }
 
-export function computeTargetBlock(data: BoardData): TargetBlockData {
+const BOOKED_STAGES = new Set(['LOA/PO', 'Invoiced', 'Paid'])
+
+function financeBookedFromViews(views: ReturnType<typeof filterOpportunityViews>, yr: number) {
+  let countLoaPo = 0
+  let countInvoicedPaid = 0
+  const nums: number[] = []
+  for (const v of views) {
+    for (const inv of v.invoices) {
+      if (inv.revenueYear !== yr || !BOOKED_STAGES.has(inv.stage)) continue
+      if (inv.stage === 'LOA/PO') countLoaPo++
+      if (inv.stage === 'Invoiced' || inv.stage === 'Paid') countInvoicedPaid++
+      if (inv.amount != null) nums.push(inv.amount)
+    }
+  }
+  const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null
+  return { total, countLoaPo, countInvoicedPaid }
+}
+
+export function computeTargetBlock(data: BoardData, filters: BoardFilters = DEFAULT_FILTERS): TargetBlockData {
   const st = data.settings
   const yr = st.year
   const target = num(st.target)
-  const finance = computeFinanceBooked(data, yr)
-  const booked = finance.total
-  const bookedForGap = booked ?? 0
-  const views = filterOpportunityViews(data, { ...DEFAULT_FILTERS, year: String(yr) }, {
-    respectStageFilter: false,
+  const yearFilter = filters.year !== 'all' ? filters.year : String(yr)
+  const views = filterOpportunityViews(data, { ...filters, year: yearFilter }, {
     respectLostToggle: false,
   })
+  const finance = financeBookedFromViews(views, yr)
+  const booked = finance.total
+  const bookedForGap = booked ?? 0
   const open = openInvoicesForYear(views, yr)
   const by = (s: string) => open.filter((i) => i.stage === s).reduce((a, i) => a + num(i.amount), 0)
   const loa = by('LOA/PO')
@@ -87,7 +105,7 @@ export function computeTargetBlock(data: BoardData): TargetBlockData {
 }
 
 export function computeTiles(data: BoardData, filters: BoardFilters) {
-  const views = filterOpportunityViews(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const views = filterOpportunityViews(data, filters, { respectLostToggle: false })
   const allInv = views.flatMap((v) => v.invoices)
   const open = allInv.filter((i) => isOpenStage(i.stage))
   const sum = (list: OpportunityInvoice[]) => {
@@ -124,7 +142,7 @@ export function computeTiles(data: BoardData, filters: BoardFilters) {
 }
 
 export function computeFunnel(data: BoardData, filters: BoardFilters) {
-  const views = filterOpportunityViews(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const views = filterOpportunityViews(data, filters, { respectLostToggle: false })
   const invs = views.flatMap((v) => v.invoices)
   const stages = STAGES.filter((s) => s !== 'Lost')
   const rows = stages.map((s, i) => {
@@ -137,7 +155,7 @@ export function computeFunnel(data: BoardData, filters: BoardFilters) {
 }
 
 export function computeInvoices(data: BoardData, filters: BoardFilters, now = new Date()) {
-  const views = filterOpportunityViews(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const views = filterOpportunityViews(data, filters, { respectLostToggle: false })
   const invs = views.flatMap((v) => v.invoices).filter((i) => i.stage !== 'Lost')
   const months: string[] = []
   for (let i = 0; i < 6; i++) {
@@ -172,7 +190,7 @@ export interface OwnerRow {
 }
 
 export function computeOwners(data: BoardData, filters: BoardFilters, personName: (id: string | null) => string): OwnerRow[] {
-  const views = filterOpportunityViews(data, { ...filters, owner: 'all' }, { respectStageFilter: false, respectLostToggle: false })
+  const views = filterOpportunityViews(data, { ...filters, owner: 'all' }, { respectLostToggle: false })
   const yr = data.settings.year
   const com = (id: string) => {
     const c = data.commitments.find((x) => x.personId === id && x.year === yr)
@@ -205,7 +223,7 @@ export function computeOwners(data: BoardData, filters: BoardFilters, personName
 }
 
 export function pipelineRows(data: BoardData, filters: BoardFilters): Opportunity[] {
-  const views = filterOpportunityViews(data, filters, { respectStageFilter: false })
+  const views = filterOpportunityViews(data, filters)
   let deals = views.map((v) => v.deal)
   if (!filters.lost) deals = deals.filter((d) => !d.invoices.every((i) => i.stage === 'Lost'))
   return deals

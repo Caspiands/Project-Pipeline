@@ -76,7 +76,7 @@ export function PipelinePage() {
 
   const views = useMemo(() => {
     if (!data) return []
-    return filterOpportunityViews(data, filters, { respectStageFilter: false })
+    return filterOpportunityViews(data, filters)
   }, [data, filters])
 
   const viewById = useMemo(() => new Map(views.map((v) => [v.deal.id, v])), [views])

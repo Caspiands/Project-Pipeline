@@ -94,13 +94,13 @@ export function OverviewPageContent() {
 
   if (!data) return <div className="empty">Loading overview…</div>
 
-  const target = computeTargetBlock(data)
+  const target = computeTargetBlock(data, filters)
   const tiles = computeTiles(data, filters)
   const funnel = computeFunnel(data, filters)
   const invoices = computeInvoices(data, filters)
   const owners = computeOwners(data, filters, (id) => personName(data, id))
   const yr = data.settings.year
-  const pieViews = filterOpportunityViews(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const pieViews = filterOpportunityViews(data, filters, { respectLostToggle: false })
   const pieColW = Math.max(240, Math.floor(pieW / 3) - 8)
 
   const invH = 230

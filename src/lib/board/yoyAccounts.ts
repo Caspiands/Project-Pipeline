@@ -21,7 +21,7 @@ function sliceForYear(data: BoardData, filters: BoardFilters, year: number) {
   return filterOpportunityViews(
     data,
     { ...filters, year: String(year) },
-    { respectStageFilter: false, respectLostToggle: false },
+    { respectLostToggle: false },
   )
 }
 

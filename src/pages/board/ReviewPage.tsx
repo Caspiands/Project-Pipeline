@@ -19,7 +19,7 @@ export function ReviewPage() {
   const lists = useMemo(() => {
     if (!data) return null
     const lr = lastReviewAt(data)
-    const r = filterOpportunities(data, filters, { respectStageFilter: false })
+    const r = filterOpportunities(data, filters)
     const ids = new Set(r.map((o) => o.id))
     const after = (iso: string) => lr && iso && iso > lr
     const added = r.filter((o) => after(o.createdAt))

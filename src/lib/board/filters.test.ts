@@ -27,6 +27,35 @@ describe('filterOpportunities', () => {
     expect(isOverdue(o, '2026-10-02')).toBe(true)
   })
 
+  it('includes a deal when any invoice matches year and stage filters', () => {
+    const baseInv = mockBoardData.opps[0].invoices[0]
+    const data = {
+      ...mockBoardData,
+      opps: [
+        {
+          ...mockBoardData.opps[0],
+          id: 'mixed',
+          invoices: [
+            { ...baseInv, id: 'i-inv', revenueYear: 2026, stage: 'Invoiced' as const },
+            { ...baseInv, id: 'i-prop', revenueYear: 2026, stage: 'Proposal' as const },
+          ],
+        },
+      ],
+    }
+    const proposal = filterOpportunities(data, {
+      ...DEFAULT_FILTERS,
+      year: '2026',
+      stage: 'Proposal',
+    })
+    expect(proposal.map((o) => o.id)).toEqual(['mixed'])
+    const paid = filterOpportunities(data, {
+      ...DEFAULT_FILTERS,
+      year: '2026',
+      stage: 'Paid',
+    })
+    expect(paid).toHaveLength(0)
+  })
+
   it('filters by invoice month and quote range', () => {
     const data = {
       ...mockBoardData,

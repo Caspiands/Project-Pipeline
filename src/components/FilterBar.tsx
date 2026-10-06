@@ -21,7 +21,7 @@ export function FilterBar() {
   if (!data) return null
 
   const people = activePeople(data)
-  const matchCount = filterOpportunities(data, filters, { respectStageFilter: false }).length
+  const matchCount = filterOpportunities(data, filters).length
   const ownerValue = [...people.map((p) => p.id), 'none', 'all'].includes(filters.owner) ? filters.owner : 'all'
 
   const accounts = uniqueAccountsSorted(data)
