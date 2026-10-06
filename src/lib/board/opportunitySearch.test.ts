@@ -19,6 +19,9 @@ describe('opportunityMatchesKeyword', () => {
           item: 'Quote 2680 renewal',
           ownerIds: ['p2'],
           ownerId: 'p2',
+          invoices: [
+            { id: 'i', amount: 2680, revenueYear: 2026, invoiceMonth: null, stage: 'Lead' as const, stageSince: null, sortOrder: 0 },
+          ],
         },
       ],
     }

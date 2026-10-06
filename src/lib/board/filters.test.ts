@@ -7,7 +7,14 @@ describe('filterOpportunities', () => {
   it('hides lost rows unless show lost is on', () => {
     const data = {
       ...mockBoardData,
-      opps: [...mockBoardData.opps, { ...mockBoardData.opps[0], id: 'o2', stage: 'Lost' as const }],
+      opps: [
+        ...mockBoardData.opps,
+        {
+          ...mockBoardData.opps[0],
+          id: 'o2',
+          invoices: [{ ...mockBoardData.opps[0].invoices[0], id: 'i2', stage: 'Lost' as const }],
+        },
+      ],
     }
     const hidden = filterOpportunities(data, DEFAULT_FILTERS, { respectStageFilter: false })
     expect(hidden).toHaveLength(1)
@@ -24,8 +31,18 @@ describe('filterOpportunities', () => {
     const data = {
       ...mockBoardData,
       opps: [
-        { ...mockBoardData.opps[0], id: 'a', invoiceMonth: '2026-06', quoteDate: '2026-03-10' },
-        { ...mockBoardData.opps[0], id: 'b', invoiceMonth: '2026-09', quoteDate: '2026-08-01' },
+        {
+          ...mockBoardData.opps[0],
+          id: 'a',
+          invoices: [{ ...mockBoardData.opps[0].invoices[0], id: 'ia', invoiceMonth: '2026-06' }],
+          quoteDate: '2026-03-10',
+        },
+        {
+          ...mockBoardData.opps[0],
+          id: 'b',
+          invoices: [{ ...mockBoardData.opps[0].invoices[0], id: 'ib', invoiceMonth: '2026-09' }],
+          quoteDate: '2026-08-01',
+        },
       ],
     }
     const june = filterOpportunities(

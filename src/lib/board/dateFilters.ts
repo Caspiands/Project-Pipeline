@@ -1,51 +1,50 @@
 import type { Opportunity } from './types'
 
-/** YYYY-MM from invoice month (stored as YYYY-MM or YYYY-MM-DD). */
 export function invoiceMonthKey(iso: string | null | undefined): string | null {
   if (!iso) return null
-  const m = String(iso).match(/^(\d{4}-\d{2})/)
-  return m ? m[1] : null
+  const m = String(iso).match(/^(\d{4})-(\d{2})/)
+  return m ? `${m[1]}-${m[2]}` : null
 }
 
 export function monthKeyFromDate(iso: string | null | undefined): string | null {
   if (!iso) return null
-  const m = String(iso).match(/^(\d{4}-\d{2}-\d{2})/)
-  return m ? m[1] : null
+  const m = String(iso).match(/^(\d{4})-(\d{2})/)
+  return m ? `${m[1]}-${m[2]}` : null
 }
 
-/** Internal key e.g. 2026-Q1; label via quarterLabel(). */
-export function quarterKeyFromMonth(yyyyMm: string): string {
-  const [y, mo] = yyyyMm.split('-').map(Number)
-  const q = Math.ceil(mo / 3)
+export function quarterKeyFromMonth(monthKey: string): string {
+  const [y, mo] = monthKey.split('-')
+  const q = Math.floor((Number(mo) - 1) / 3) + 1
   return `${y}-Q${q}`
 }
 
 export function quarterLabel(key: string): string {
-  const m = key.match(/^(\d{4})-Q([1-4])$/)
-  if (!m) return key
-  return `${m[1]} Q${m[2]}`
+  const [y, q] = key.split('-Q')
+  return `Q${q} ${y}`
 }
 
 export function distinctInvoiceMonths(opps: Opportunity[]): string[] {
-  const s = new Set<string>()
+  const keys = new Set<string>()
   for (const o of opps) {
-    const k = invoiceMonthKey(o.invoiceMonth)
-    if (k) s.add(k)
+    for (const inv of o.invoices) {
+      const k = invoiceMonthKey(inv.invoiceMonth)
+      if (k) keys.add(k)
+    }
   }
-  return [...s].sort()
+  return [...keys].sort()
 }
 
 export function distinctQuoteMonths(opps: Opportunity[]): string[] {
-  const s = new Set<string>()
+  const keys = new Set<string>()
   for (const o of opps) {
     const k = monthKeyFromDate(o.quoteDate)
-    if (k) s.add(k)
+    if (k) keys.add(k)
   }
-  return [...s].sort()
+  return [...keys].sort()
 }
 
-export function distinctQuarters(months: string[]): string[] {
-  const s = new Set<string>()
-  for (const m of months) s.add(quarterKeyFromMonth(m))
-  return [...s].sort((a, b) => a.localeCompare(b))
+export function distinctQuarters(monthKeys: string[]): string[] {
+  const keys = new Set<string>()
+  for (const m of monthKeys) keys.add(quarterKeyFromMonth(m))
+  return [...keys].sort()
 }

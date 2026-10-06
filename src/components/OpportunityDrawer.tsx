@@ -3,9 +3,10 @@ import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { activePeople, profileName } from '@/lib/board/names'
 import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
-import { fmtDate } from '@/lib/format'
+import { sumInvoiceAmounts } from '@/lib/board/invoices'
+import { fmtDate, fmtRM } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
-import type { Opportunity, OpportunityInput } from '@/lib/board/types'
+import type { Opportunity, OpportunityInput, OpportunityInvoiceInput } from '@/lib/board/types'
 
 export function OpportunityDrawer() {
   const board = useBoard()
@@ -82,11 +83,47 @@ export function OpportunityDrawer() {
     }
   }
 
+  const setInvoice = (index: number, patch: Partial<OpportunityInvoiceInput> & { stage?: OpportunityInvoiceInput['stage'] }) => {
+    setForm((f) => {
+      if (!f) return f
+      const invoices = [...f.invoices]
+      invoices[index] = { ...invoices[index], ...patch }
+      return { ...f, invoices }
+    })
+  }
+
+  const addInvoice = () => {
+    const year = data.settings.year
+    setForm((f) =>
+      f
+        ? {
+            ...f,
+            invoices: [
+              ...f.invoices,
+              { amount: null, revenueYear: year, invoiceMonth: null, stage: 'Invoiced', sortOrder: f.invoices.length },
+            ],
+          }
+        : f,
+    )
+  }
+
+  const removeInvoice = (index: number) => {
+    setForm((f) => {
+      if (!f || f.invoices.length <= 1) return f
+      const invoices = f.invoices.filter((_, i) => i !== index).map((inv, i) => ({ ...inv, sortOrder: i }))
+      return { ...f, invoices }
+    })
+  }
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canWrite) return
     if (!form.account.trim() || !form.item.trim()) {
       board.setToast('Account and item are required')
+      return
+    }
+    if (!form.invoices.length) {
+      board.setToast('Add at least one invoice line')
       return
     }
     if (form.link && !/^https?:\/\//i.test(form.link)) {
@@ -117,6 +154,7 @@ export function OpportunityDrawer() {
 
   const title = drawer.mode === 'edit' ? `${form.account} · ${form.item}` : 'New opportunity'
   const selectedOwners = new Set(form.ownerIds ?? [])
+  const dealTotal = sumInvoiceAmounts(form.invoices)
 
   return (
     <>
@@ -170,19 +208,62 @@ export function OpportunityDrawer() {
               ))}
             </div>
           </div>
-          <div className="field">
-            <span>Stage</span>
-            <select value={form.stage} disabled={!canWrite} onChange={(e) => set('stage', e.target.value as OpportunityInput['stage'])}>
-              {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <span>Value (RM)</span>
-            <input type="number" min={0} step={1000} disabled={!canWrite} value={form.value ?? ''} onChange={(e) => set('value', e.target.value === '' ? null : Number(e.target.value))} />
-          </div>
-          <div className="field">
-            <span>Revenue year</span>
-            <input type="number" disabled={!canWrite} value={form.revenueYear} onChange={(e) => set('revenueYear', Number(e.target.value))} />
+          <div className="field full invoice-block">
+            <div className="invoice-block-head">
+              <span>Invoices</span>
+              <span className="small muted">Deal total: {fmtRM(dealTotal)}</span>
+            </div>
+            <div className="invoice-lines">
+              {form.invoices.map((inv, idx) => (
+                <div className="invoice-line" key={inv.id ?? `new-${idx}`}>
+                  <div className="field">
+                    <span>Amount (RM)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      disabled={!canWrite}
+                      value={inv.amount ?? ''}
+                      onChange={(e) => setInvoice(idx, { amount: e.target.value === '' ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="field">
+                    <span>Revenue year</span>
+                    <input
+                      type="number"
+                      disabled={!canWrite}
+                      value={inv.revenueYear}
+                      onChange={(e) => setInvoice(idx, { revenueYear: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="field">
+                    <span>Invoice month</span>
+                    <input
+                      type="month"
+                      disabled={!canWrite}
+                      value={inv.invoiceMonth || ''}
+                      onChange={(e) => setInvoice(idx, { invoiceMonth: e.target.value || null })}
+                    />
+                  </div>
+                  <div className="field">
+                    <span>Stage</span>
+                    <select
+                      disabled={!canWrite}
+                      value={inv.stage}
+                      onChange={(e) => setInvoice(idx, { stage: e.target.value as OpportunityInvoiceInput['stage'] })}
+                    >
+                      {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  {canWrite && form.invoices.length > 1 ? (
+                    <button type="button" className="ghost invoice-remove" onClick={() => removeInvoice(idx)}>Remove</button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            {canWrite ? (
+              <button type="button" className="ghost" onClick={addInvoice}>Add invoice line</button>
+            ) : null}
           </div>
           <div className="field">
             <span>Quote no</span>
@@ -195,10 +276,6 @@ export function OpportunityDrawer() {
           <div className="field">
             <span>LOA / PO date</span>
             <input type="date" disabled={!canWrite} value={form.loaDate || ''} onChange={(e) => set('loaDate', e.target.value || null)} />
-          </div>
-          <div className="field">
-            <span>Expected invoice month</span>
-            <input type="month" disabled={!canWrite} value={form.invoiceMonth || ''} onChange={(e) => set('invoiceMonth', e.target.value || null)} />
           </div>
           <div className="field">
             <span>Delivery start</span>

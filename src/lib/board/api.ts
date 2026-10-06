@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import { assembleBoardData, mapAudit, unmapOpp, unmapPros } from './mappers'
+import { assembleBoardData, mapAudit, unmapInvoice, unmapOpp, unmapPros } from './mappers'
 import type { Stage } from '@/lib/stages'
-import type { AuditEntry, BoardData, CompanySettings, OpportunityInput, Prospect } from './types'
+import type { AuditEntry, BoardData, CompanySettings, OpportunityInput, OpportunityInvoiceInput, Prospect } from './types'
 
 export interface OpportunityImportRowResult {
   lineNumber: number
@@ -16,18 +16,20 @@ function must<T>(res: { data: T | null; error: { message: string } | null }): T 
 }
 
 export async function fetchBoardData(): Promise<BoardData> {
-  const [people, profiles, settings, commitments, opps, oppOwners, prospects, reviews, history] = await Promise.all([
-    supabase.from('people').select('*').order('name'),
-    supabase.from('profiles').select('id,email,full_name,role,is_active').order('email'),
-    supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
-    supabase.from('commitments').select('*'),
-    supabase.from('opportunities').select('*').is('deleted_at', null),
-    supabase.from('opportunity_owners').select('opportunity_id,person_id'),
-    supabase.from('prospects').select('*'),
-    supabase.from('reviews').select('*').order('reviewed_at', { ascending: false }).limit(20),
-    supabase.from('stage_history').select('*').order('changed_at', { ascending: false }).limit(1000),
-  ])
-  ;[people, profiles, settings, commitments, opps, oppOwners, prospects, reviews, history].forEach((r) => {
+  const [people, profiles, settings, commitments, opps, invoices, oppOwners, prospects, reviews, history] =
+    await Promise.all([
+      supabase.from('people').select('*').order('name'),
+      supabase.from('profiles').select('id,email,full_name,role,is_active').order('email'),
+      supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('commitments').select('*'),
+      supabase.from('opportunities').select('*').is('deleted_at', null),
+      supabase.from('opportunity_invoices').select('*').order('sort_order'),
+      supabase.from('opportunity_owners').select('opportunity_id,person_id'),
+      supabase.from('prospects').select('*'),
+      supabase.from('reviews').select('*').order('reviewed_at', { ascending: false }).limit(20),
+      supabase.from('stage_history').select('*').order('changed_at', { ascending: false }).limit(1000),
+    ])
+  ;[people, profiles, settings, commitments, opps, invoices, oppOwners, prospects, reviews, history].forEach((r) => {
     if (r.error) throw new Error(r.error.message)
   })
   return assembleBoardData({
@@ -36,6 +38,7 @@ export async function fetchBoardData(): Promise<BoardData> {
     settings: settings.data,
     commitments: commitments.data ?? [],
     opps: opps.data ?? [],
+    invoices: invoices.data ?? [],
     oppOwners: oppOwners.data ?? [],
     prospects: prospects.data ?? [],
     reviews: reviews.data ?? [],
@@ -52,6 +55,44 @@ async function syncOpportunityOwners(opportunityId: string, ownerIds: string[]):
     unique.map((person_id) => ({ opportunity_id: opportunityId, person_id })),
   )
   if (insErr) throw new Error(insErr.message)
+}
+
+async function syncInvoices(opportunityId: string, invoices: OpportunityInvoiceInput[]): Promise<void> {
+  const { data: existing, error: exErr } = await supabase
+    .from('opportunity_invoices')
+    .select('id')
+    .eq('opportunity_id', opportunityId)
+  if (exErr) throw new Error(exErr.message)
+  const keep = new Set(invoices.map((i) => i.id).filter(Boolean))
+  for (const row of existing ?? []) {
+    if (!keep.has(row.id)) {
+      const { error } = await supabase.from('opportunity_invoices').delete().eq('id', row.id)
+      if (error) throw new Error(error.message)
+    }
+  }
+  for (let i = 0; i < invoices.length; i++) {
+    const inv = { ...invoices[i], sortOrder: i }
+    const row = unmapInvoice(
+      {
+        id: inv.id ?? '',
+        amount: inv.amount,
+        revenueYear: inv.revenueYear,
+        invoiceMonth: inv.invoiceMonth,
+        stage: inv.stage,
+        stageSince: null,
+        sortOrder: i,
+      },
+      opportunityId,
+      i,
+    )
+    if (inv.id) {
+      const { error } = await supabase.from('opportunity_invoices').update(row).eq('id', inv.id)
+      if (error) throw new Error(error.message)
+    } else {
+      const { error } = await supabase.from('opportunity_invoices').insert(row)
+      if (error) throw new Error(error.message)
+    }
+  }
 }
 
 export async function fetchAuditLog(limit = 500): Promise<AuditEntry[]> {
@@ -75,13 +116,24 @@ export async function importOpportunities(
   return results
 }
 
-export async function updateOpportunityStage(id: string, stage: Stage): Promise<void> {
-  const { error } = await supabase.from('opportunities').update({ stage }).eq('id', id)
+export async function updateInvoiceStage(invoiceId: string, stage: Stage): Promise<void> {
+  const { error } = await supabase.from('opportunity_invoices').update({ stage }).eq('id', invoiceId)
   if (error) throw new Error(error.message)
+}
+
+/** Inline pipeline control when the deal has a single invoice. */
+export async function updateOpportunityStage(dealId: string, stage: Stage): Promise<void> {
+  const { data, error } = await supabase.from('opportunity_invoices').select('id').eq('opportunity_id', dealId)
+  if (error) throw new Error(error.message)
+  if ((data ?? []).length !== 1) throw new Error('Stage can only be changed inline when the deal has one invoice.')
+  await updateInvoiceStage(data![0].id, stage)
 }
 
 export async function saveOpportunity(o: OpportunityInput): Promise<string> {
   const ownerIds = o.ownerIds ?? (o.ownerId ? [o.ownerId] : [])
+  const invoices = o.invoices?.length
+    ? o.invoices
+    : [{ revenueYear: new Date().getFullYear(), stage: 'Lead' as Stage, amount: null, invoiceMonth: null, sortOrder: 0 }]
   const row = unmapOpp({ ...o, ownerIds })
   let id: string
   if (o.id) {
@@ -92,6 +144,7 @@ export async function saveOpportunity(o: OpportunityInput): Promise<string> {
     id = ins.id
   }
   await syncOpportunityOwners(id, ownerIds)
+  await syncInvoices(id, invoices.map((inv, i) => ({ ...inv, sortOrder: i })))
   return id
 }
 

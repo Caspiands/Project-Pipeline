@@ -1,7 +1,7 @@
 import type { BoardData } from './types'
 
 export const FINANCE_BOOKED_RULE =
-  'Finance revenue booked for the target year is the sum of deal values whose stage is LOA/PO, Invoiced, or Paid, and whose revenue year is the target year. Blank values are left out, never treated as zero.'
+  'Finance revenue booked for the target year is the sum of invoice amounts whose stage is LOA/PO, Invoiced, or Paid, and whose revenue year is the target year. Blank amounts are left out, never treated as zero.'
 
 const BOOKED_STAGES = new Set(['LOA/PO', 'Invoiced', 'Paid'])
 
@@ -12,16 +12,17 @@ export interface FinanceBookedBreakdown {
 }
 
 export function computeFinanceBooked(data: BoardData, targetYear: number): FinanceBookedBreakdown {
-  const rows = data.opps.filter(
-    (o) => String(o.revenueYear) === String(targetYear) && BOOKED_STAGES.has(o.stage),
-  )
-  const loa = rows.filter((o) => o.stage === 'LOA/PO')
-  const invPaid = rows.filter((o) => o.stage === 'Invoiced' || o.stage === 'Paid')
-  const nums = rows.map((o) => o.value).filter((v): v is number => v != null)
-  const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null
-  return {
-    total,
-    countLoaPo: loa.length,
-    countInvoicedPaid: invPaid.length,
+  let countLoaPo = 0
+  let countInvoicedPaid = 0
+  const nums: number[] = []
+  for (const o of data.opps) {
+    for (const inv of o.invoices) {
+      if (String(inv.revenueYear) !== String(targetYear) || !BOOKED_STAGES.has(inv.stage)) continue
+      if (inv.stage === 'LOA/PO') countLoaPo++
+      if (inv.stage === 'Invoiced' || inv.stage === 'Paid') countInvoicedPaid++
+      if (inv.amount != null) nums.push(inv.amount)
+    }
   }
+  const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null
+  return { total, countLoaPo, countInvoicedPaid }
 }

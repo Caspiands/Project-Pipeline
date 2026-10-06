@@ -29,21 +29,31 @@ export interface Commitment {
   amount: number
 }
 
+export interface OpportunityInvoice {
+  id: string
+  amount: number | null
+  revenueYear: number
+  invoiceMonth: string | null
+  stage: Stage
+  stageSince: string | null
+  sortOrder: number
+}
+
+export type OpportunityInvoiceInput = Omit<OpportunityInvoice, 'id' | 'stageSince'> & {
+  id?: string | null
+}
+
 export interface Opportunity {
   id: string
   account: string
   item: string
   segment: Segment
-  /** Primary owner (first name A–Z); kept in sync with `ownerIds`. */
   ownerId: string | null
   ownerIds: string[]
-  stage: Stage
-  value: number | null
-  revenueYear: number
+  invoices: OpportunityInvoice[]
   quoteNo: string
   quoteDate: string | null
   loaDate: string | null
-  invoiceMonth: string | null
   startDate: string | null
   probability: number | null
   nextStep: string
@@ -51,15 +61,19 @@ export interface Opportunity {
   nextDate: string | null
   link: string
   notes: string
-  stageSince: string | null
   createdAt: string
   createdBy: string | null
   updatedAt: string
   updatedBy: string | null
 }
 
-export type OpportunityInput = Omit<Opportunity, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'stageSince'> & {
+export type OpportunityInput = Omit<
+  Opportunity,
+  'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'ownerId' | 'invoices'
+> & {
   id?: string | null
+  ownerId?: string | null
+  invoices: OpportunityInvoiceInput[]
 }
 
 export interface Prospect {

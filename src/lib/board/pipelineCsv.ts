@@ -1,6 +1,6 @@
 import { personName } from './names'
 import { ownersLabel } from './owners'
-import type { BoardData, Opportunity } from './types'
+import type { BoardData, Opportunity, OpportunityInvoice } from './types'
 
 export const PIPELINE_CSV_HEADERS: { key: string; label: string; patterns: RegExp[] }[] = [
   { key: 'account', label: 'Account', patterns: [/^account$/] },
@@ -56,34 +56,36 @@ const esc = (v: string) => {
   return v
 }
 
+function rowForInvoice(o: Opportunity, inv: OpportunityInvoice, data: BoardData): string[] {
+  return [
+    o.account,
+    o.item,
+    o.segment,
+    o.ownerIds.length ? ownersLabel(data, o.ownerIds) : '',
+    inv.stage,
+    inv.amount == null ? '' : String(inv.amount),
+    String(inv.revenueYear),
+    o.quoteNo,
+    isoDateOnly(o.quoteDate),
+    isoDateOnly(o.loaDate),
+    isoInvoiceMonth(inv.invoiceMonth),
+    isoDateOnly(o.startDate),
+    o.probability == null ? '' : String(o.probability),
+    o.nextStep,
+    o.nextOwnerId ? personName(data, o.nextOwnerId) : '',
+    isoDateOnly(o.nextDate),
+    o.link,
+    o.notes,
+  ]
+}
+
 export function opportunitiesToCsv(rows: Opportunity[], data: BoardData): string {
   const headers = PIPELINE_CSV_HEADERS.map((h) => h.label)
   const lines = [headers.join(',')]
   for (const o of rows) {
-    lines.push(
-      [
-        o.account,
-        o.item,
-        o.segment,
-        o.ownerIds.length ? ownersLabel(data, o.ownerIds) : '',
-        o.stage,
-        o.value == null ? '' : String(o.value),
-        String(o.revenueYear),
-        o.quoteNo,
-        isoDateOnly(o.quoteDate),
-        isoDateOnly(o.loaDate),
-        isoInvoiceMonth(o.invoiceMonth),
-        isoDateOnly(o.startDate),
-        o.probability == null ? '' : String(o.probability),
-        o.nextStep,
-        o.nextOwnerId ? personName(data, o.nextOwnerId) : '',
-        isoDateOnly(o.nextDate),
-        o.link,
-        o.notes,
-      ]
-        .map((x) => esc(String(x)))
-        .join(','),
-    )
+    for (const inv of o.invoices) {
+      lines.push(rowForInvoice(o, inv, data).map((x) => esc(String(x))).join(','))
+    }
   }
   return lines.join('\n')
 }
@@ -98,6 +100,8 @@ export function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url)
 }
 
-export function pipelineTotal(rows: Opportunity[]): number {
-  return rows.reduce((a, o) => a + (o.value == null ? 0 : Number(o.value)), 0)
+export function pipelineTotalFromViews(views: { total: number | null }[]): number {
+  const nums = views.map((v) => v.total).filter((v): v is number => v != null)
+  if (!nums.length) return 0
+  return nums.reduce((a, b) => a + b, 0)
 }

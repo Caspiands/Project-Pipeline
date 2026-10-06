@@ -2,14 +2,36 @@ import type { Database } from '@/lib/database.types'
 import { num } from '@/lib/format'
 import type { Segment, Stage } from '@/lib/stages'
 import { sortOwnerIds } from './owners'
-import type { AuditEntry, BoardData, Opportunity, OpportunityInput, Prospect, StageHistoryEntry } from './types'
+import type {
+  AuditEntry,
+  BoardData,
+  Opportunity,
+  OpportunityInput,
+  OpportunityInvoice,
+  Prospect,
+  StageHistoryEntry,
+} from './types'
 
 type OppRow = Database['public']['Tables']['opportunities']['Row']
+type InvRow = Database['public']['Tables']['opportunity_invoices']['Row']
 type ProsRow = Database['public']['Tables']['prospects']['Row']
 type AuditRow = Database['public']['Tables']['audit_log']['Row']
 
-export function mapOpp(r: OppRow, ownerIds: string[] = []): Opportunity {
+export function mapInvoice(r: InvRow): OpportunityInvoice {
+  return {
+    id: r.id,
+    amount: r.amount == null ? null : Number(r.amount),
+    revenueYear: r.revenue_year,
+    invoiceMonth: r.invoice_month ? String(r.invoice_month).slice(0, 7) : null,
+    stage: r.stage as Stage,
+    stageSince: r.stage_since,
+    sortOrder: r.sort_order,
+  }
+}
+
+export function mapOpp(r: OppRow, ownerIds: string[] = [], invoices: OpportunityInvoice[] = []): Opportunity {
   const ids = ownerIds.length ? ownerIds : r.owner_id ? [r.owner_id] : []
+  const sortedInv = [...invoices].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
   return {
     id: r.id,
     account: r.account,
@@ -17,13 +39,10 @@ export function mapOpp(r: OppRow, ownerIds: string[] = []): Opportunity {
     segment: r.segment as Segment,
     ownerId: r.owner_id || null,
     ownerIds: ids,
-    stage: r.stage as Stage,
-    value: r.value == null ? null : Number(r.value),
-    revenueYear: r.revenue_year,
+    invoices: sortedInv,
     quoteNo: r.quote_no || '',
     quoteDate: r.quote_date,
     loaDate: r.loa_date,
-    invoiceMonth: r.invoice_month ? String(r.invoice_month).slice(0, 7) : null,
     startDate: r.start_date,
     probability: r.probability,
     nextStep: r.next_step || '',
@@ -31,7 +50,6 @@ export function mapOpp(r: OppRow, ownerIds: string[] = []): Opportunity {
     nextDate: r.next_date,
     link: r.link || '',
     notes: r.notes || '',
-    stageSince: r.stage_since,
     createdAt: r.created_at,
     createdBy: r.created_by,
     updatedAt: r.updated_at,
@@ -46,13 +64,9 @@ export function unmapOpp(o: OpportunityInput) {
     item: o.item,
     segment: o.segment,
     owner_id: primary,
-    stage: o.stage,
-    value: o.value,
-    revenue_year: o.revenueYear,
     quote_no: o.quoteNo || null,
     quote_date: o.quoteDate || null,
     loa_date: o.loaDate || null,
-    invoice_month: o.invoiceMonth ? o.invoiceMonth + '-01' : null,
     start_date: o.startDate || null,
     probability: o.probability,
     next_step: o.nextStep || null,
@@ -60,6 +74,17 @@ export function unmapOpp(o: OpportunityInput) {
     next_date: o.nextDate || null,
     link: o.link || null,
     notes: o.notes || null,
+  }
+}
+
+export function unmapInvoice(inv: OpportunityInvoice, opportunityId: string, sortOrder: number) {
+  return {
+    opportunity_id: opportunityId,
+    amount: inv.amount,
+    revenue_year: inv.revenueYear,
+    invoice_month: inv.invoiceMonth ? inv.invoiceMonth + '-01' : null,
+    stage: inv.stage,
+    sort_order: sortOrder,
   }
 }
 
@@ -114,6 +139,7 @@ export function assembleBoardData(raw: {
   settings: Database['public']['Tables']['settings']['Row'] | null
   commitments: Database['public']['Tables']['commitments']['Row'][]
   opps: OppRow[]
+  invoices: InvRow[]
   prospects: ProsRow[]
   reviews: Database['public']['Tables']['reviews']['Row'][]
   history: Database['public']['Tables']['stage_history']['Row'][]
@@ -125,13 +151,19 @@ export function assembleBoardData(raw: {
     list.push(row.person_id)
     ownerMap.set(row.opportunity_id, list)
   }
+  const invMap = new Map<string, OpportunityInvoice[]>()
+  for (const row of raw.invoices) {
+    const list = invMap.get(row.opportunity_id) ?? []
+    list.push(mapInvoice(row))
+    invMap.set(row.opportunity_id, list)
+  }
   const people = raw.people.map((r) => ({
-      id: r.id,
-      name: r.name,
-      email: r.email || '',
-      profileId: r.profile_id,
-      isActive: r.is_active,
-    }))
+    id: r.id,
+    name: r.name,
+    email: r.email || '',
+    profileId: r.profile_id,
+    isActive: r.is_active,
+  }))
   const sortStub: BoardData = {
     people,
     profiles: [],
@@ -161,7 +193,7 @@ export function assembleBoardData(raw: {
     commitments: raw.commitments.map((r) => ({ personId: r.person_id, year: r.year, amount: num(r.amount) })),
     opps: raw.opps.map((r) => {
       const ids = sortOwnerIds(ownerMap.get(r.id) ?? [], sortStub)
-      return mapOpp(r, ids)
+      return mapOpp(r, ids, invMap.get(r.id) ?? [])
     }),
     prospects: raw.prospects.map(mapPros),
     reviews: raw.reviews.map((r) => ({ id: r.id, at: r.reviewed_at, by: r.reviewed_by, notes: r.notes })),

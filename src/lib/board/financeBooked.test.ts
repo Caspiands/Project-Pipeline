@@ -3,19 +3,28 @@ import { computeFinanceBooked } from './financeBooked'
 import { mockBoardData } from '@/test/mockBoardData'
 
 describe('computeFinanceBooked', () => {
-  it('sums LOA/PO, Invoiced, and Paid for the target year and ignores blank values', () => {
+  it('sums invoice amounts for target year booked stages only', () => {
+    const inv = (stage: string, amount: number | null, year: number) => ({
+      id: Math.random().toString(),
+      amount,
+      revenueYear: year,
+      invoiceMonth: null,
+      stage: stage as 'LOA/PO',
+      stageSince: null,
+      sortOrder: 0,
+    })
     const data = {
       ...mockBoardData,
       opps: [
-        { ...mockBoardData.opps[0], id: 'a', stage: 'LOA/PO' as const, value: 100000, revenueYear: 2026 },
-        { ...mockBoardData.opps[0], id: 'b', stage: 'Invoiced' as const, value: 50000, revenueYear: 2026 },
-        { ...mockBoardData.opps[0], id: 'c', stage: 'Paid' as const, value: null, revenueYear: 2026 },
-        { ...mockBoardData.opps[0], id: 'd', stage: 'LOA/PO' as const, value: 200000, revenueYear: 2025 },
+        { ...mockBoardData.opps[0], id: 'a', invoices: [inv('LOA/PO', 100000, 2026)] },
+        { ...mockBoardData.opps[0], id: 'b', invoices: [inv('Invoiced', 50000, 2026)] },
+        { ...mockBoardData.opps[0], id: 'c', invoices: [inv('Paid', null, 2026)] },
+        { ...mockBoardData.opps[0], id: 'd', invoices: [inv('LOA/PO', 200000, 2025)] },
       ],
     }
-    const b = computeFinanceBooked(data, 2026)
-    expect(b.total).toBe(150000)
-    expect(b.countLoaPo).toBe(1)
-    expect(b.countInvoicedPaid).toBe(2)
+    const r = computeFinanceBooked(data, 2026)
+    expect(r.total).toBe(150000)
+    expect(r.countLoaPo).toBe(1)
+    expect(r.countInvoicedPaid).toBe(2)
   })
 })

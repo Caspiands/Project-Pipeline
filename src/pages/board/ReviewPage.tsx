@@ -3,11 +3,11 @@ import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { lastReviewAt } from '@/lib/board/calculations'
 import { filterOpportunities, isOverdue } from '@/lib/board/filters'
+import { formatDealStageLabel, sumInvoiceAmounts, dealHasAnyStage, dealHasOpenInvoice, dealHasWonInvoice } from '@/lib/board/invoices'
 import { ownersLabel } from '@/lib/board/owners'
 import { profileName } from '@/lib/board/names'
 import { TECH_BOARD_URL } from '@/lib/board/types'
 import { daysSince, fmtDate, fmtInt, fmtRM, todayISO } from '@/lib/format'
-import { isOpenStage, isWonStage } from '@/lib/stages'
 import type { Opportunity } from '@/lib/board/types'
 
 export function ReviewPage() {
@@ -28,14 +28,20 @@ export function ReviewPage() {
       .map((h) => ({ o: r.find((x) => x.id === h.oppId)!, e: h }))
       .filter((m) => m.o)
       .sort((a, b) => (a.e.at < b.e.at ? 1 : -1))
-    const stale = r.filter((o) => isOpenStage(o.stage) && lr && (!o.updatedAt || o.updatedAt <= lr))
+    const stale = r.filter((o) => dealHasOpenInvoice(o) && lr && (!o.updatedAt || o.updatedAt <= lr))
     const od = r.filter((o) => isOverdue(o)).sort((a, b) => (a.nextDate! < b.nextDate! ? -1 : 1))
     const t = todayISO()
     const lim = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10)
     const soon = r
-      .filter((o) => (o.stage === 'LOA/PO' || o.stage === 'Verbal yes' || isWonStage(o.stage)) && o.startDate && o.startDate >= t && o.startDate <= lim)
+      .filter(
+        (o) =>
+          (dealHasAnyStage(o, ['LOA/PO', 'Verbal yes']) || dealHasWonInvoice(o)) &&
+          o.startDate &&
+          o.startDate >= t &&
+          o.startDate <= lim,
+      )
       .sort((a, b) => (a.startDate! < b.startDate! ? -1 : 1))
-    const noStart = r.filter((o) => (o.stage === 'LOA/PO' || o.stage === 'Verbal yes') && !o.startDate)
+    const noStart = r.filter((o) => dealHasAnyStage(o, ['LOA/PO', 'Verbal yes']) && !o.startDate)
     return { lr, od, moved, added, stale, soon, noStart, lim }
   }, [data, filters])
 
@@ -46,7 +52,7 @@ export function ReviewPage() {
       <span className="what">
         <button type="button" className="linkbtn" onClick={() => openEdit(o)}>{o.account}</button> · {o.item}
       </span>
-      <span className="meta">{ownersLabel(data, o.ownerIds)} · {fmtRM(o.value)}{extra ? <> · {extra}</> : null}</span>
+      <span className="meta">{ownersLabel(data, o.ownerIds)} · {fmtRM(sumInvoiceAmounts(o.invoices))}{extra ? <> · {extra}</> : null}</span>
     </li>
   )
   const list = (arr: Opportunity[], fn: (o: Opportunity) => React.ReactNode, msg: string) =>
@@ -109,12 +115,12 @@ export function ReviewPage() {
         <section className="block">
           <h2>Added since the review ({fmtInt(lists.added.length)})</h2>
           <p className="lead">New opportunities logged after the last review.</p>
-          {list(lists.added, (o) => item(o, `${o.stage} · added ${fmtDate(o.createdAt)}`), 'Nothing new has been added.')}
+          {list(lists.added, (o) => item(o, `${formatDealStageLabel(o.invoices)} · added ${fmtDate(o.createdAt)}`), 'Nothing new has been added.')}
         </section>
         <section className="block">
           <h2>Open and not updated since the review ({fmtInt(lists.stale.length)})</h2>
           <p className="lead">Open rows no one has touched since the last review.</p>
-          {list(lists.stale, (o) => item(o, `${o.stage} · last updated ${fmtDate(o.updatedAt)}`), 'Every open row has been updated.')}
+          {list(lists.stale, (o) => item(o, `${formatDealStageLabel(o.invoices)} · last updated ${fmtDate(o.updatedAt)}`), 'Every open row has been updated.')}
         </section>
         <section className="block">
           <h2>Starting in the next 60 days ({fmtInt(lists.soon.length)})</h2>
@@ -127,7 +133,7 @@ export function ReviewPage() {
         <section className="block">
           <h2>Verbal yes or LOA with no start date ({fmtInt(lists.noStart.length)})</h2>
           <p className="lead">Delivery cannot plan resources for these until a start date is set.</p>
-          {list(lists.noStart, (o) => item(o, o.stage), 'Every confirmed row has a start date.')}
+          {list(lists.noStart, (o) => item(o, formatDealStageLabel(o.invoices)), 'Every confirmed row has a start date.')}
         </section>
       </div>
     </div>

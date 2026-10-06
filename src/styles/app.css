@@ -49,6 +49,11 @@ header.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav.tabs a{padding:8px 14px;color:var(--fg-2);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
 nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.invoice-block{margin-top:8px}
+.invoice-block-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.invoice-lines{display:flex;flex-direction:column;gap:12px}
+.invoice-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr));gap:8px 12px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2)}
+.invoice-remove{justify-self:start}
 .owner-picks{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px}
 .owner-pick{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--fg)}
 .filters{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding-block:14px}

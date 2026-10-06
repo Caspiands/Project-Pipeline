@@ -166,14 +166,18 @@ export function parsePipelineCsv(
         item,
         segment: segmentRaw as Segment,
         ownerIds: ownerParsed.ids,
-        ownerId: ownerParsed.ids[0] ?? null,
-        stage: stageRaw as Stage,
-        value: valueParsed.value,
-        revenueYear,
+        invoices: [
+          {
+            amount: valueParsed.value,
+            revenueYear,
+            invoiceMonth: invoiceMonth.value,
+            stage: stageRaw as Stage,
+            sortOrder: 0,
+          },
+        ],
         quoteNo: cell(row, idx, 'quoteNo'),
         quoteDate: quoteDate.value,
         loaDate: loaDate.value,
-        invoiceMonth: invoiceMonth.value,
         startDate: startDate.value,
         probability: prob.value,
         nextStep: cell(row, idx, 'nextStep'),
@@ -185,5 +189,21 @@ export function parsePipelineCsv(
     })
   }
 
+  out.rows = groupParsedImportRows(out.rows)
   return out
+}
+
+export function groupParsedImportRows(rows: { lineNumber: number; input: OpportunityInput }[]) {
+  const map = new Map<string, { lineNumber: number; input: OpportunityInput }>()
+  for (const r of rows) {
+    const k = `${r.input.account.trim().toLowerCase()}\0${r.input.item.trim().toLowerCase()}`
+    const inv = r.input.invoices[0]
+    const cur = map.get(k)
+    if (!cur) {
+      map.set(k, { lineNumber: r.lineNumber, input: { ...r.input, invoices: [inv] } })
+      continue
+    }
+    cur.input.invoices.push({ ...inv, sortOrder: cur.input.invoices.length })
+  }
+  return [...map.values()]
 }

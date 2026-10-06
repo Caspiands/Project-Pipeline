@@ -149,6 +149,53 @@ export type Database = {
           },
         ]
       }
+      opportunity_invoices: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          invoice_month: string | null
+          opportunity_id: string
+          revenue_year: number
+          sort_order: number
+          stage: Database['public']['Enums']['opp_stage']
+          stage_since: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          invoice_month?: string | null
+          opportunity_id: string
+          revenue_year: number
+          sort_order?: number
+          stage?: Database['public']['Enums']['opp_stage']
+          stage_since?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          invoice_month?: string | null
+          opportunity_id?: string
+          revenue_year?: number
+          sort_order?: number
+          stage?: Database['public']['Enums']['opp_stage']
+          stage_since?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'opportunity_invoices_opportunity_id_fkey'
+            columns: ['opportunity_id']
+            isOneToOne: false
+            referencedRelation: 'opportunities'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       opportunities: {
         Row: {
           account: string
@@ -156,7 +203,6 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           id: string
-          invoice_month: string | null
           item: string
           link: string | null
           loa_date: string | null
@@ -168,14 +214,10 @@ export type Database = {
           probability: number | null
           quote_date: string | null
           quote_no: string | null
-          revenue_year: number
           segment: Database['public']['Enums']['segment']
-          stage: Database['public']['Enums']['opp_stage']
-          stage_since: string | null
           start_date: string | null
           updated_at: string
           updated_by: string | null
-          value: number | null
         }
         Insert: {
           account: string
@@ -183,7 +225,6 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           id?: string
-          invoice_month?: string | null
           item: string
           link?: string | null
           loa_date?: string | null
@@ -195,14 +236,10 @@ export type Database = {
           probability?: number | null
           quote_date?: string | null
           quote_no?: string | null
-          revenue_year?: number
           segment?: Database['public']['Enums']['segment']
-          stage?: Database['public']['Enums']['opp_stage']
-          stage_since?: string | null
           start_date?: string | null
           updated_at?: string
           updated_by?: string | null
-          value?: number | null
         }
         Update: {
           account?: string
@@ -210,7 +247,6 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           id?: string
-          invoice_month?: string | null
           item?: string
           link?: string | null
           loa_date?: string | null
@@ -222,14 +258,10 @@ export type Database = {
           probability?: number | null
           quote_date?: string | null
           quote_no?: string | null
-          revenue_year?: number
           segment?: Database['public']['Enums']['segment']
-          stage?: Database['public']['Enums']['opp_stage']
-          stage_since?: string | null
           start_date?: string | null
           updated_at?: string
           updated_by?: string | null
-          value?: number | null
         }
         Relationships: [
           {

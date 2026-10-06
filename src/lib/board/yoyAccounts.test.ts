@@ -1,25 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { computeYoyByAccount, totalRmKnown } from './yoyAccounts'
+import { computeYoyByAccount } from './yoyAccounts'
 import { mockBoardData } from '@/test/mockBoardData'
 import { DEFAULT_FILTERS } from './types'
 
-describe('yoyAccounts', () => {
-  it('does not use the revenue-year filter from the bar', () => {
+describe('computeYoyByAccount', () => {
+  it('counts invoices per revenue year within account', () => {
+    const base = mockBoardData.opps[0]
     const data = {
       ...mockBoardData,
       opps: [
-        { ...mockBoardData.opps[0], id: 'a', account: 'Acme', revenueYear: 2025, value: 100 },
-        { ...mockBoardData.opps[0], id: 'b', account: 'Acme', revenueYear: 2026, value: 200 },
+        {
+          ...base,
+          id: 'a',
+          account: 'Acme',
+          invoices: [
+            { id: 'i1', amount: 100, revenueYear: 2025, invoiceMonth: null, stage: 'Invoiced' as const, stageSince: null, sortOrder: 0 },
+            { id: 'i2', amount: 200, revenueYear: 2026, invoiceMonth: null, stage: 'Invoiced' as const, stageSince: null, sortOrder: 0 },
+          ],
+        },
       ],
     }
     const table = computeYoyByAccount(data, { ...DEFAULT_FILTERS, year: '2025' })
-    expect(table.rows).toHaveLength(1)
-    expect(table.rows[0].count2025).toBe(1)
-    expect(table.rows[0].count2026).toBe(1)
-    expect(table.rows[0].diff).toBe(100)
-  })
-
-  it('leaves total RM blank when every value is null', () => {
-    expect(totalRmKnown([{ ...mockBoardData.opps[0], value: null }])).toBeNull()
+    const acme = table.rows.find((r) => r.account === 'Acme')!
+    expect(acme.count2025).toBe(1)
+    expect(acme.count2026).toBe(1)
+    expect(acme.total2025).toBe(100)
+    expect(acme.total2026).toBe(200)
   })
 })

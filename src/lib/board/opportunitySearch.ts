@@ -3,26 +3,31 @@ import { ownersLabel } from './owners'
 import { personName } from './names'
 import type { BoardData, Opportunity } from './types'
 
-/** Lowercase text used for case-insensitive partial keyword match (pipeline table columns). */
+/** Lowercase text used for case-insensitive partial keyword match (deal + invoice lines). */
 export function opportunitySearchHaystack(data: BoardData, o: Opportunity): string {
-  const days = daysSince(o.stageSince)
+  const invParts = o.invoices.flatMap((inv) => {
+    const days = daysSince(inv.stageSince)
+    return [
+      inv.stage,
+      String(inv.revenueYear),
+      inv.invoiceMonth ?? '',
+      inv.invoiceMonth ? fmtMonth(inv.invoiceMonth) : '',
+      inv.amount == null ? '' : String(inv.amount),
+      fmtFull(inv.amount),
+      days == null ? '' : String(days),
+      days == null ? '' : fmtInt(days),
+    ]
+  })
   const parts = [
     o.account,
     o.item,
     o.segment,
     ownersLabel(data, o.ownerIds),
     ...o.ownerIds.map((id) => personName(data, id)),
-    o.stage,
-    o.value == null ? '' : String(o.value),
-    fmtFull(o.value),
-    String(o.revenueYear),
+    ...invParts,
     o.quoteNo,
     o.quoteDate ?? '',
     o.quoteDate ? fmtDate(o.quoteDate) : '',
-    o.invoiceMonth ?? '',
-    o.invoiceMonth ? fmtMonth(o.invoiceMonth) : '',
-    days == null ? '' : String(days),
-    days == null ? '' : fmtInt(days),
     o.nextStep,
     personName(data, o.nextOwnerId),
     o.nextDate ?? '',

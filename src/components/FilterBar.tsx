@@ -26,7 +26,7 @@ export function FilterBar() {
 
   const accounts = uniqueAccountsSorted(data)
   const accountValue = filters.account === 'all' || accounts.includes(filters.account) ? filters.account : 'all'
-  const years = [...new Set(data.opps.map((o) => String(o.revenueYear)))].sort()
+  const years = [...new Set(data.opps.flatMap((o) => o.invoices.map((i) => String(i.revenueYear))))].sort()
   const invoiceMonths = distinctInvoiceMonths(data.opps)
   const invoiceQuarters = distinctQuarters(invoiceMonths)
   const quoteMonths = distinctQuoteMonths(data.opps)

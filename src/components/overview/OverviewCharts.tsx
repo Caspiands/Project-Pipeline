@@ -6,8 +6,8 @@ import {
   computeTiles,
   type TargetBlockData,
 } from '@/lib/board/calculations'
-import { filterOpportunities } from '@/lib/board/filters'
-import { pieByOwner, pieBySegment, pieByStage } from '@/lib/board/overviewPies'
+import { pieByOwnerFromViews, pieBySegmentFromViews, pieByStageFromViews } from '@/lib/board/overviewPies'
+import { filterOpportunityViews } from '@/lib/board/filters'
 import { useBoard } from '@/lib/board/BoardProvider'
 import type { RefObject } from 'react'
 import { personName } from '@/lib/board/names'
@@ -100,7 +100,7 @@ export function OverviewPageContent() {
   const invoices = computeInvoices(data, filters)
   const owners = computeOwners(data, filters, (id) => personName(data, id))
   const yr = data.settings.year
-  const pieRows = filterOpportunities(data, filters, { respectStageFilter: false, respectLostToggle: false })
+  const pieViews = filterOpportunityViews(data, filters, { respectStageFilter: false, respectLostToggle: false })
   const pieColW = Math.max(240, Math.floor(pieW / 3) - 8)
 
   const invH = 230
@@ -126,9 +126,9 @@ export function OverviewPageContent() {
         <h2>Value breakdown</h2>
         <p className="lead">Share of value in the filtered pipeline (raw totals, not weighted).</p>
         <div className="grid g3 pies">
-          <ValuePieChart title="By stage" rows={pieByStage(pieRows)} width={pieColW} />
-          <ValuePieChart title="By segment" rows={pieBySegment(pieRows)} width={pieColW} />
-          <ValuePieChart title="By owner" rows={pieByOwner(pieRows, data)} width={pieColW} />
+          <ValuePieChart title="By stage" rows={pieByStageFromViews(pieViews)} width={pieColW} />
+          <ValuePieChart title="By segment" rows={pieBySegmentFromViews(pieViews)} width={pieColW} />
+          <ValuePieChart title="By owner" rows={pieByOwnerFromViews(data, pieViews)} width={pieColW} />
         </div>
       </section>
       <YearOnYearAccounts data={data} filters={filters} />
@@ -159,7 +159,8 @@ export function OverviewPageContent() {
           })}
         </div>
         <p className="small muted stage-funnel-foot">
-          Lost: {fmtInt(funnel.lost.length)} {funnel.lost.length === 1 ? 'deal' : 'deals'}, {fmtRM(funnel.lost.reduce((a, o) => a + num(o.value), 0))}.
+          Lost: {fmtInt(funnel.lost.length)} {funnel.lost.length === 1 ? 'invoice' : 'invoices'},{' '}
+          {fmtRM(funnel.lost.reduce((a, inv) => a + num(inv.amount), 0) || null)}.
         </p>
       </section>
       <section className="block" ref={invoiceRef}>
