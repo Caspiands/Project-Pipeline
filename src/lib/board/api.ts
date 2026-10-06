@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { assembleBoardData, mapAudit, unmapOpp, unmapPros } from './mappers'
+import type { Stage } from '@/lib/stages'
 import type { AuditEntry, BoardData, CompanySettings, OpportunityInput, Prospect } from './types'
 
 export interface OpportunityImportRowResult {
@@ -59,6 +60,11 @@ export async function importOpportunities(
     }
   }
   return results
+}
+
+export async function updateOpportunityStage(id: string, stage: Stage): Promise<void> {
+  const { error } = await supabase.from('opportunities').update({ stage }).eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export async function saveOpportunity(o: OpportunityInput): Promise<string> {

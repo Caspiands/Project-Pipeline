@@ -50,6 +50,7 @@ nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav.tabs a{padding:8px 14px;color:var(--fg-2);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
 nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
 .filters{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding-block:14px}
+.stage-select{font:inherit;font-size:12px;max-width:9.5rem;padding:4px 6px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface)}
 .filters label{font-size:12px;color:var(--fg-2);display:flex;align-items:center;gap:6px}
 select,input,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px}
 textarea{width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px}

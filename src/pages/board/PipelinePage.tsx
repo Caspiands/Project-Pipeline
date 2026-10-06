@@ -7,7 +7,7 @@ import { personName, profileName } from '@/lib/board/names'
 import { downloadCsv, opportunitiesToCsv, pipelineTotal } from '@/lib/board/pipelineCsv'
 import { parsePipelineCsv } from '@/lib/board/pipelineImport'
 import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth } from '@/lib/format'
-import { stageIndex } from '@/lib/stages'
+import { STAGES, stageIndex, type Stage } from '@/lib/stages'
 import type { Opportunity } from '@/lib/board/types'
 
 const COLS = [
@@ -42,7 +42,7 @@ export function PipelinePage() {
   const board = useBoard()
   const auth = useAuth()
   const canWrite = auth.status?.role === 'admin' || auth.status?.role === 'editor'
-  const { data, filters, openEdit, openCreate, importPipelineRows, setToast } = board
+  const { data, filters, openEdit, openCreate, importPipelineRows, patchOppStage, setToast } = board
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'account', dir: 1 })
   const fileRef = useRef<HTMLInputElement>(null)
   const [importText, setImportText] = useState<string | null>(null)
@@ -265,8 +265,23 @@ export function PipelinePage() {
                       </td>
                       <td className="seg">{o.segment || '—'}</td>
                       <td>{pn(o.ownerId)}</td>
-                      <td>
-                        <span className={`pill s${stageIndex(o.stage)}${o.stage === 'Lost' ? ' lost' : ''}`}>{o.stage}</span>
+                      <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        {canWrite ? (
+                          <select
+                            className="stage-select"
+                            aria-label={`Stage for ${o.account}`}
+                            value={o.stage}
+                            onChange={(e) =>
+                              void patchOppStage(o.id, e.target.value as Stage).catch((err: Error) => setToast(err.message))
+                            }
+                          >
+                            {STAGES.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`pill s${stageIndex(o.stage)}${o.stage === 'Lost' ? ' lost' : ''}`}>{o.stage}</span>
+                        )}
                       </td>
                       <td className="r num">{fmtFull(o.value)}</td>
                       <td className="r num">{o.revenueYear || '—'}</td>

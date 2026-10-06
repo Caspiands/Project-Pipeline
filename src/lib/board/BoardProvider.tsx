@@ -13,6 +13,7 @@ import {
   saveOpportunity,
   saveSettings,
   softDeleteOpportunity,
+  updateOpportunityStage,
   updatePerson,
   updateProfile,
   updateProspect,
@@ -48,6 +49,7 @@ interface BoardContextValue {
   openEdit: (opp: Opportunity) => void
   closeDrawer: () => void
   saveOpp: (o: OpportunityInput) => Promise<string>
+  patchOppStage: (id: string, stage: import('@/lib/stages').Stage) => Promise<void>
   deleteOpp: (id: string) => Promise<void>
   markReview: () => Promise<void>
   saveTargets: (settings: BoardData['settings'], commitments: { personId: string; year: number; amount: number | null }[]) => Promise<void>
@@ -200,6 +202,10 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       openEdit,
       closeDrawer,
       saveOpp: (o) => saveOppMut.mutateAsync(o),
+      patchOppStage: async (id, stage) => {
+        await updateOpportunityStage(id, stage)
+        invalidate()
+      },
       deleteOpp: (id) => deleteMut.mutateAsync(id),
       markReview: async () => {
         await markReviewDone()
