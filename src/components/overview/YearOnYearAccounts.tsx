@@ -52,7 +52,7 @@ export function YearOnYearAccounts({ data, filters }: { data: BoardData; filters
     <section className="block" ref={ref}>
       <h2>Year on year by account</h2>
       <p className="lead">
-        Revenue-year 2025 and 2026 side by side. Segment, owner, and search follow the filters above; invoice and quote filters apply within each year. The revenue-year filter does not apply here.
+        Revenue-year 2025 and 2026 side by side. Segment, owner, account, and search follow the filters above; invoice and quote filters apply within each year. The revenue-year filter does not apply here.
       </p>
       {!hasRows ? (
         <p className="small muted">Nothing to compare for these filters.</p>

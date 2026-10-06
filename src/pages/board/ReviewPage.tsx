@@ -3,7 +3,8 @@ import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { lastReviewAt } from '@/lib/board/calculations'
 import { filterOpportunities, isOverdue } from '@/lib/board/filters'
-import { personName, profileName } from '@/lib/board/names'
+import { ownersLabel } from '@/lib/board/owners'
+import { profileName } from '@/lib/board/names'
 import { TECH_BOARD_URL } from '@/lib/board/types'
 import { daysSince, fmtDate, fmtInt, fmtRM, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage } from '@/lib/stages'
@@ -40,13 +41,12 @@ export function ReviewPage() {
 
   if (!data || !lists) return <div className="empty">Loading review…</div>
 
-  const pn = (id: string | null) => personName(data, id)
   const item = (o: Opportunity, extra?: React.ReactNode) => (
     <li key={o.id}>
       <span className="what">
         <button type="button" className="linkbtn" onClick={() => openEdit(o)}>{o.account}</button> · {o.item}
       </span>
-      <span className="meta">{pn(o.ownerId)} · {fmtRM(o.value)}{extra ? <> · {extra}</> : null}</span>
+      <span className="meta">{ownersLabel(data, o.ownerIds)} · {fmtRM(o.value)}{extra ? <> · {extra}</> : null}</span>
     </li>
   )
   const list = (arr: Opportunity[], fn: (o: Opportunity) => React.ReactNode, msg: string) =>

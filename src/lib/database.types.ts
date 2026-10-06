@@ -119,6 +119,36 @@ export type Database = {
         }
         Relationships: []
       }
+      opportunity_owners: {
+        Row: {
+          opportunity_id: string
+          person_id: string
+        }
+        Insert: {
+          opportunity_id: string
+          person_id: string
+        }
+        Update: {
+          opportunity_id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'opportunity_owners_opportunity_id_fkey'
+            columns: ['opportunity_id']
+            isOneToOne: false
+            referencedRelation: 'opportunities'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'opportunity_owners_person_id_fkey'
+            columns: ['person_id']
+            isOneToOne: false
+            referencedRelation: 'people'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       opportunities: {
         Row: {
           account: string

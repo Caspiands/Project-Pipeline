@@ -4,6 +4,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import { pipelineRows } from '@/lib/board/calculations'
 import { isOverdue } from '@/lib/board/filters'
 import { personName, profileName } from '@/lib/board/names'
+import { ownersLabel } from '@/lib/board/owners'
 import { downloadCsv, opportunitiesToCsv, pipelineTotal } from '@/lib/board/pipelineCsv'
 import { parsePipelineCsv } from '@/lib/board/pipelineImport'
 import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth } from '@/lib/format'
@@ -33,7 +34,7 @@ function sortVal(o: Opportunity, k: SortKey, data: ReturnType<typeof useBoard>['
   if (k === 'days') return daysSince(o.stageSince) ?? -1
   if (k === 'stage') return stageIndex(o.stage)
   if (k === 'value') return o.value == null ? -1 : Number(o.value)
-  if (k === 'owner') return personName(data, o.ownerId).toLowerCase()
+  if (k === 'owner') return ownersLabel(data, o.ownerIds).toLowerCase()
   const v = o[k as keyof Opportunity]
   return v == null ? '' : String(v).toLowerCase()
 }
@@ -72,9 +73,10 @@ export function PipelinePage() {
 
   const total = pipelineTotal(rows)
   const pn = (id: string | null) => personName(data, id)
+  const owners = (o: Opportunity) => ownersLabel(data, o.ownerIds)
 
   const exportCsv = () => {
-    const csv = opportunitiesToCsv(rows, pn)
+    const csv = opportunitiesToCsv(rows, data)
     downloadCsv(`cds-pipeline-${new Date().toISOString().slice(0, 10)}.csv`, csv)
   }
 
@@ -179,7 +181,7 @@ export function PipelinePage() {
                           <td>{r.input.item}</td>
                           <td>{r.input.stage}</td>
                           <td>{r.input.revenueYear}</td>
-                          <td>{r.input.ownerId ? pn(r.input.ownerId) : '—'}</td>
+                          <td>{r.input.ownerIds?.length ? ownersLabel(data, r.input.ownerIds) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -264,7 +266,7 @@ export function PipelinePage() {
                         {o.notes ? <div className="small muted">{o.notes.length > 110 ? o.notes.slice(0, 110) + '…' : o.notes}</div> : null}
                       </td>
                       <td className="seg">{o.segment || '—'}</td>
-                      <td>{pn(o.ownerId)}</td>
+                      <td>{owners(o)}</td>
                       <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         {canWrite ? (
                           <select

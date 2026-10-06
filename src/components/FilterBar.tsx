@@ -8,6 +8,7 @@ import {
 } from '@/lib/board/dateFilters'
 import { filterOpportunities } from '@/lib/board/filters'
 import { activePeople } from '@/lib/board/names'
+import { uniqueAccountsSorted } from '@/lib/board/owners'
 import { fmtInt, fmtMonth } from '@/lib/format'
 import { STAGES } from '@/lib/stages'
 
@@ -23,6 +24,8 @@ export function FilterBar() {
   const matchCount = filterOpportunities(data, filters, { respectStageFilter: false }).length
   const ownerValue = [...people.map((p) => p.id), 'none', 'all'].includes(filters.owner) ? filters.owner : 'all'
 
+  const accounts = uniqueAccountsSorted(data)
+  const accountValue = filters.account === 'all' || accounts.includes(filters.account) ? filters.account : 'all'
   const years = [...new Set(data.opps.map((o) => String(o.revenueYear)))].sort()
   const invoiceMonths = distinctInvoiceMonths(data.opps)
   const invoiceQuarters = distinctQuarters(invoiceMonths)
@@ -51,6 +54,15 @@ export function FilterBar() {
         </select>
       </label>
       <label>
+        Account
+        <select value={accountValue} onChange={(e) => setFilters({ account: e.target.value })}>
+          <option value="all">All</option>
+          {accounts.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </label>
+      <label>
         Revenue year
         <select value={filters.year} onChange={(e) => setFilters({ year: e.target.value })}>
           <option value="all">All</option>
@@ -65,7 +77,7 @@ export function FilterBar() {
           type="search"
           value={filters.q}
           onChange={(e) => setFilters({ q: e.target.value })}
-          placeholder="Account, item, quote, notes"
+          placeholder="Search whole row (account, owners, stage, value…)"
         />
       </label>
       <label>

@@ -34,7 +34,9 @@ export interface Opportunity {
   account: string
   item: string
   segment: Segment
+  /** Primary owner (first name A–Z); kept in sync with `ownerIds`. */
   ownerId: string | null
+  ownerIds: string[]
   stage: Stage
   value: number | null
   revenueYear: number
@@ -116,6 +118,7 @@ export interface BoardData {
 export interface BoardFilters {
   seg: 'all' | Segment
   owner: 'all' | 'none' | string
+  account: 'all' | string
   year: 'all' | string
   q: string
   lost: boolean
@@ -132,6 +135,7 @@ export interface BoardFilters {
 export const DEFAULT_FILTERS: BoardFilters = {
   seg: 'all',
   owner: 'all',
+  account: 'all',
   year: 'all',
   q: '',
   lost: false,

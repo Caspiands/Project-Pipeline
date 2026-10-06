@@ -1,4 +1,5 @@
 import { SEGMENTS, STAGES, type Segment, type Stage } from '@/lib/stages'
+import { parseOwnerCellToIds } from './owners'
 import type { OpportunityInput } from './types'
 import { splitLine } from './prospectImport'
 import { PIPELINE_CSV_HEADERS, headerIndexMap } from './pipelineCsv'
@@ -44,11 +45,9 @@ function resolveOwner(
   label: string,
   lineNumber: number,
 ): { id: string | null; error?: string } {
-  const s = name.trim()
-  if (!s || /^unassigned$/i.test(s)) return { id: null }
-  const hit = people.find((p) => p.name.toLowerCase() === s.toLowerCase())
-  if (!hit) return { id: null, error: `Row ${lineNumber}: Unknown ${label} “${s}”.` }
-  return { id: hit.id }
+  const parsed = parseOwnerCellToIds(name, people, label, lineNumber)
+  if (parsed.error) return { id: null, error: parsed.error }
+  return { id: parsed.ids[0] ?? null }
 }
 
 function parseValue(raw: string, lineNumber: number): { value: number | null; error?: string } {
@@ -145,8 +144,8 @@ export function parsePipelineCsv(
     const prob = parseProbability(cell(row, idx, 'probability'), lineNumber)
     if (prob.error) rowErrors.push(prob.error)
 
-    const owner = resolveOwner(cell(row, idx, 'owner'), people, 'owner', lineNumber)
-    if (owner.error) rowErrors.push(owner.error)
+    const ownerParsed = parseOwnerCellToIds(cell(row, idx, 'owner'), people, 'owner', lineNumber)
+    if (ownerParsed.error) rowErrors.push(ownerParsed.error)
     const nextOwner = resolveOwner(cell(row, idx, 'nextOwner'), people, 'next step owner', lineNumber)
     if (nextOwner.error) rowErrors.push(nextOwner.error)
 
@@ -166,7 +165,8 @@ export function parsePipelineCsv(
         account,
         item,
         segment: segmentRaw as Segment,
-        ownerId: owner.id,
+        ownerIds: ownerParsed.ids,
+        ownerId: ownerParsed.ids[0] ?? null,
         stage: stageRaw as Stage,
         value: valueParsed.value,
         revenueYear,

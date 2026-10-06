@@ -16,17 +16,18 @@ function must<T>(res: { data: T | null; error: { message: string } | null }): T 
 }
 
 export async function fetchBoardData(): Promise<BoardData> {
-  const [people, profiles, settings, commitments, opps, prospects, reviews, history] = await Promise.all([
+  const [people, profiles, settings, commitments, opps, oppOwners, prospects, reviews, history] = await Promise.all([
     supabase.from('people').select('*').order('name'),
     supabase.from('profiles').select('id,email,full_name,role,is_active').order('email'),
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
     supabase.from('commitments').select('*'),
     supabase.from('opportunities').select('*').is('deleted_at', null),
+    supabase.from('opportunity_owners').select('opportunity_id,person_id'),
     supabase.from('prospects').select('*'),
     supabase.from('reviews').select('*').order('reviewed_at', { ascending: false }).limit(20),
     supabase.from('stage_history').select('*').order('changed_at', { ascending: false }).limit(1000),
   ])
-  ;[people, profiles, settings, commitments, opps, prospects, reviews, history].forEach((r) => {
+  ;[people, profiles, settings, commitments, opps, oppOwners, prospects, reviews, history].forEach((r) => {
     if (r.error) throw new Error(r.error.message)
   })
   return assembleBoardData({
@@ -35,10 +36,22 @@ export async function fetchBoardData(): Promise<BoardData> {
     settings: settings.data,
     commitments: commitments.data ?? [],
     opps: opps.data ?? [],
+    oppOwners: oppOwners.data ?? [],
     prospects: prospects.data ?? [],
     reviews: reviews.data ?? [],
     history: history.data ?? [],
   })
+}
+
+async function syncOpportunityOwners(opportunityId: string, ownerIds: string[]): Promise<void> {
+  const { error: delErr } = await supabase.from('opportunity_owners').delete().eq('opportunity_id', opportunityId)
+  if (delErr) throw new Error(delErr.message)
+  const unique = [...new Set(ownerIds.filter(Boolean))]
+  if (!unique.length) return
+  const { error: insErr } = await supabase.from('opportunity_owners').insert(
+    unique.map((person_id) => ({ opportunity_id: opportunityId, person_id })),
+  )
+  if (insErr) throw new Error(insErr.message)
 }
 
 export async function fetchAuditLog(limit = 500): Promise<AuditEntry[]> {
@@ -68,13 +81,18 @@ export async function updateOpportunityStage(id: string, stage: Stage): Promise<
 }
 
 export async function saveOpportunity(o: OpportunityInput): Promise<string> {
-  const row = unmapOpp(o)
+  const ownerIds = o.ownerIds ?? (o.ownerId ? [o.ownerId] : [])
+  const row = unmapOpp({ ...o, ownerIds })
+  let id: string
   if (o.id) {
     must(await supabase.from('opportunities').update(row).eq('id', o.id).select('id').single())
-    return o.id
+    id = o.id
+  } else {
+    const ins = must(await supabase.from('opportunities').insert(row).select('id').single()) as { id: string }
+    id = ins.id
   }
-  const ins = must(await supabase.from('opportunities').insert(row).select('id').single()) as { id: string }
-  return ins.id
+  await syncOpportunityOwners(id, ownerIds)
+  return id
 }
 
 export async function softDeleteOpportunity(id: string): Promise<void> {

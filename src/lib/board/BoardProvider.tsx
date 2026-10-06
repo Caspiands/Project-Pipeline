@@ -105,7 +105,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       void qc.invalidateQueries({ queryKey: ['board'] })
       void qc.invalidateQueries({ queryKey: ['audit'] })
     }
-    ;['opportunities', 'prospects', 'settings', 'commitments', 'people', 'reviews', 'stage_history', 'profiles', 'audit_log'].forEach(
+    ;['opportunities', 'opportunity_owners', 'prospects', 'settings', 'commitments', 'people', 'reviews', 'stage_history', 'profiles', 'audit_log'].forEach(
       (tb) => channel.on('postgres_changes', { event: '*', schema: 'public', table: tb }, bump),
     )
     channel.subscribe()
@@ -150,6 +150,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         item: '',
         segment: 'Mixed',
         ownerId: null,
+        ownerIds: [],
         stage: 'Lead',
         value: null,
         revenueYear: year,

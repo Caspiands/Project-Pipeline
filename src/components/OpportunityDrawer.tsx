@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { activePeople, profileName } from '@/lib/board/names'
+import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
 import { fmtDate } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
 import type { Opportunity, OpportunityInput } from '@/lib/board/types'
@@ -18,7 +19,9 @@ export function OpportunityDrawer() {
 
   useEffect(() => {
     if (drawer?.opp) {
-      setForm({ ...drawer.opp })
+      const opp = drawer.opp
+      const ownerIds = opp.ownerIds ?? (opp.ownerId ? [opp.ownerId] : [])
+      setForm({ ...opp, ownerIds })
       setConfirmDelete(false)
     } else {
       setForm(null)
@@ -38,6 +41,8 @@ export function OpportunityDrawer() {
     return data.history.filter((h) => h.oppId === form.id).sort((a, b) => (a.at < b.at ? -1 : 1))
   }, [data, form?.id])
 
+  const accountOptions = useMemo(() => (data ? uniqueAccountsSorted(data) : []), [data])
+
   if (!drawer || !form || !data) return null
 
   const people = activePeople(data)
@@ -52,6 +57,31 @@ export function OpportunityDrawer() {
 
   const set = <K extends keyof OpportunityInput>(k: K, v: OpportunityInput[K]) => setForm((f) => (f ? { ...f, [k]: v } : f))
 
+  const toggleOwner = (personId: string, on: boolean) => {
+    setForm((f) => {
+      if (!f) return f
+      const cur = f.ownerIds ?? []
+      const next = on ? [...cur, personId] : cur.filter((id) => id !== personId)
+      const sorted = [...next].sort((a, b) => {
+        const na = people.find((p) => p.id === a)?.name ?? ''
+        const nb = people.find((p) => p.id === b)?.name ?? ''
+        return na.localeCompare(nb, 'en-GB')
+      })
+      return { ...f, ownerIds: sorted, ownerId: sorted[0] ?? null }
+    })
+  }
+
+  const onAccountChange = (account: string) => {
+    set('account', account)
+    const trimmed = account.trim()
+    if (trimmed && accountOptions.includes(trimmed)) {
+      const ids = dominantOwnerIdsForAccount(data, trimmed)
+      if (ids.length) {
+        setForm((f) => (f ? { ...f, account, ownerIds: ids, ownerId: ids[0] ?? null } : f))
+      }
+    }
+  }
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canWrite) return
@@ -65,7 +95,8 @@ export function OpportunityDrawer() {
     }
     setSaving(true)
     try {
-      await saveOpp(form)
+      const ownerIds = form.ownerIds ?? []
+      await saveOpp({ ...form, ownerIds, ownerId: ownerIds[0] ?? null })
     } finally {
       setSaving(false)
     }
@@ -85,6 +116,7 @@ export function OpportunityDrawer() {
   }
 
   const title = drawer.mode === 'edit' ? `${form.account} · ${form.item}` : 'New opportunity'
+  const selectedOwners = new Set(form.ownerIds ?? [])
 
   return (
     <>
@@ -97,7 +129,20 @@ export function OpportunityDrawer() {
         <form id="oppForm" onSubmit={(e) => void onSubmit(e)}>
           <div className="field full">
             <span>Account</span>
-            <input value={form.account} disabled={!canWrite} onChange={(e) => set('account', e.target.value)} id="o_account" required />
+            <input
+              list="board-account-list"
+              value={form.account}
+              disabled={!canWrite}
+              onChange={(e) => onAccountChange(e.target.value)}
+              id="o_account"
+              required
+              autoComplete="off"
+            />
+            <datalist id="board-account-list">
+              {accountOptions.map((a) => (
+                <option key={a} value={a} />
+              ))}
+            </datalist>
           </div>
           <div className="field full">
             <span>Item / opportunity</span>
@@ -109,11 +154,21 @@ export function OpportunityDrawer() {
               {SEGMENTS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div className="field">
-            <span>Owner</span>
-            <select value={form.ownerId || ''} disabled={!canWrite} onChange={(e) => set('ownerId', e.target.value || null)}>
-              {ownerOpts}
-            </select>
+          <div className="field full">
+            <span>Owner(s)</span>
+            <div className="owner-picks" role="group" aria-label="Deal owners">
+              {people.map((p) => (
+                <label key={p.id} className="owner-pick">
+                  <input
+                    type="checkbox"
+                    disabled={!canWrite}
+                    checked={selectedOwners.has(p.id)}
+                    onChange={(e) => toggleOwner(p.id, e.target.checked)}
+                  />
+                  {p.name}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="field">
             <span>Stage</span>

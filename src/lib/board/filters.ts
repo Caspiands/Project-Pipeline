@@ -1,6 +1,8 @@
 import { isOpenStage } from '@/lib/stages'
 import { todayISO } from '@/lib/format'
 import { invoiceMonthKey, monthKeyFromDate, quarterKeyFromMonth } from './dateFilters'
+import { opportunityMatchesKeyword } from './opportunitySearch'
+import { opportunityMatchesOwner } from './owners'
 import type { BoardData, BoardFilters, Opportunity } from './types'
 
 export interface FilterOptions {
@@ -18,17 +20,14 @@ export function filterOpportunities(
 ): Opportunity[] {
   const respectLost = opts.respectLostToggle !== false
   const respectStage = opts.respectStageFilter !== false
-  const q = filters.q.trim().toLowerCase()
   return data.opps.filter((o) => {
     if (respectLost && !filters.lost && o.stage === 'Lost') return false
     if (respectStage && filters.stage !== 'all' && o.stage !== filters.stage) return false
     if (filters.seg !== 'all' && o.segment !== filters.seg) return false
-    if (filters.owner !== 'all' && (o.ownerId || 'none') !== filters.owner) return false
+    if (filters.owner !== 'all' && !opportunityMatchesOwner(o, filters.owner)) return false
+    if (filters.account !== 'all' && o.account.trim() !== filters.account) return false
     if (filters.year !== 'all' && String(o.revenueYear) !== filters.year) return false
-    if (q) {
-      const hay = `${o.account} ${o.item} ${o.quoteNo} ${o.notes}`.toLowerCase()
-      if (!hay.includes(q)) return false
-    }
+    if (!opportunityMatchesKeyword(data, o, filters.q)) return false
     if (filters.invoiceMonth !== 'all') {
       const im = invoiceMonthKey(o.invoiceMonth)
       if (im !== filters.invoiceMonth) return false

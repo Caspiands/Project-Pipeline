@@ -1,6 +1,7 @@
 import { num } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
-import type { Opportunity } from './types'
+import type { BoardData, Opportunity } from './types'
+import { ownersLabel } from './owners'
 
 export interface PieSliceRow {
   label: string
@@ -29,7 +30,7 @@ export function pieBySegment(rows: Opportunity[]): PieSliceRow[] {
   return bucket(rows, (o) => o.segment, [...SEGMENTS])
 }
 
-export function pieByOwner(rows: Opportunity[], personName: (id: string | null) => string): PieSliceRow[] {
-  const out = bucket(rows, (o) => (o.ownerId ? personName(o.ownerId) : 'Unassigned'))
+export function pieByOwner(rows: Opportunity[], data: BoardData): PieSliceRow[] {
+  const out = bucket(rows, (o) => (o.ownerIds.length ? ownersLabel(data, o.ownerIds) : 'Unassigned'))
   return out.sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
 }

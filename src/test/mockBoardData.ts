@@ -12,6 +12,7 @@ export const mockBoardData: BoardData = {
       item: 'Q4 quotations',
       segment: 'Mixed',
       ownerId: 'p1',
+      ownerIds: ['p1'],
       stage: 'Quote sent',
       value: 262000,
       revenueYear: 2026,

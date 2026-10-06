@@ -1,4 +1,6 @@
-import type { Opportunity } from './types'
+import { personName } from './names'
+import { ownersLabel } from './owners'
+import type { BoardData, Opportunity } from './types'
 
 export const PIPELINE_CSV_HEADERS: { key: string; label: string; patterns: RegExp[] }[] = [
   { key: 'account', label: 'Account', patterns: [/^account$/] },
@@ -54,7 +56,7 @@ const esc = (v: string) => {
   return v
 }
 
-export function opportunitiesToCsv(rows: Opportunity[], personName: (id: string | null) => string): string {
+export function opportunitiesToCsv(rows: Opportunity[], data: BoardData): string {
   const headers = PIPELINE_CSV_HEADERS.map((h) => h.label)
   const lines = [headers.join(',')]
   for (const o of rows) {
@@ -63,7 +65,7 @@ export function opportunitiesToCsv(rows: Opportunity[], personName: (id: string 
         o.account,
         o.item,
         o.segment,
-        o.ownerId ? personName(o.ownerId) : '',
+        o.ownerIds.length ? ownersLabel(data, o.ownerIds) : '',
         o.stage,
         o.value == null ? '' : String(o.value),
         String(o.revenueYear),
@@ -74,7 +76,7 @@ export function opportunitiesToCsv(rows: Opportunity[], personName: (id: string 
         isoDateOnly(o.startDate),
         o.probability == null ? '' : String(o.probability),
         o.nextStep,
-        o.nextOwnerId ? personName(o.nextOwnerId) : '',
+        o.nextOwnerId ? personName(data, o.nextOwnerId) : '',
         isoDateOnly(o.nextDate),
         o.link,
         o.notes,

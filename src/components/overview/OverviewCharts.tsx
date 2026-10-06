@@ -42,17 +42,29 @@ function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: numbe
         Company-wide, all segments; filters do not apply here. {t.financeBookedRule} Open rows are {t.year} revenue-year rows not yet invoiced.
       </p>
       <div className="target-head">
-        <div>
+        <div className="target-metric">
           <span className="lab">Finance revenue booked</span>
           <span className="big">{fmtRM(t.booked)}</span>
-          <span className="small muted">
+          <p className="small muted target-sub">
             {fmtInt(t.countLoaPo)} LOA/PO · {fmtInt(t.countInvoicedPaid)} Invoiced or Paid
-          </span>
+          </p>
         </div>
-        <div><span className="lab">Gap to target</span><span className="big">{fmtRM(t.gap)}</span></div>
-        <div><span className="lab">LOA / PO in hand</span><span className="big">{fmtRM(t.loa)}</span></div>
-        <div><span className="lab">Gap after LOA / PO</span><span className="big">{fmtRM(Math.max(0, t.gap - t.loa))}</span></div>
-        <div><span className="lab">All open {t.year} pipeline</span><span className="big">{fmtRM(t.loa + t.verbal + t.quoted + t.early)}</span></div>
+        <div className="target-metric">
+          <span className="lab">Gap to target</span>
+          <span className="big">{fmtRM(t.gap)}</span>
+        </div>
+        <div className="target-metric">
+          <span className="lab">LOA / PO in hand</span>
+          <span className="big">{fmtRM(t.loa)}</span>
+        </div>
+        <div className="target-metric">
+          <span className="lab">Gap after LOA / PO</span>
+          <span className="big">{fmtRM(Math.max(0, t.gap - t.loa))}</span>
+        </div>
+        <div className="target-metric">
+          <span className="lab">All open {t.year} pipeline</span>
+          <span className="big">{fmtRM(t.loa + t.verbal + t.quoted + t.early)}</span>
+        </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label="Booked revenue and open pipeline against target">
         <rect x={0} y={18} width={W} height={30} fill="var(--surface-2)" />
@@ -78,7 +90,6 @@ export function OverviewPageContent() {
   const { data, filters } = useBoard()
   const [targetRef, targetW] = useSvgWidth()
   const [pieRef, pieW] = useSvgWidth()
-  const [funnelRef, funnelW] = useSvgWidth()
   const [invoiceRef, invoiceW] = useSvgWidth()
 
   if (!data) return <div className="empty">Loading overview…</div>
@@ -91,12 +102,6 @@ export function OverviewPageContent() {
   const yr = data.settings.year
   const pieRows = filterOpportunities(data, filters, { respectStageFilter: false, respectLostToggle: false })
   const pieColW = Math.max(240, Math.floor(pieW / 3) - 8)
-  const pn = (id: string | null) => personName(data, id)
-
-  const rowH = 34
-  const funnelH = funnel.rows.length * rowH + 8
-  const lx = 86
-  const bw = Math.max(60, funnelW - lx - 150)
 
   const invH = 230
   const y0 = 24
@@ -123,32 +128,37 @@ export function OverviewPageContent() {
         <div className="grid g3 pies">
           <ValuePieChart title="By stage" rows={pieByStage(pieRows)} width={pieColW} />
           <ValuePieChart title="By segment" rows={pieBySegment(pieRows)} width={pieColW} />
-          <ValuePieChart title="By owner" rows={pieByOwner(pieRows, pn)} width={pieColW} />
+          <ValuePieChart title="By owner" rows={pieByOwner(pieRows, data)} width={pieColW} />
         </div>
       </section>
       <YearOnYearAccounts data={data} filters={filters} />
-      <section className="block" ref={funnelRef}>
+      <section className="block">
         <h2>Where the money sits, by stage</h2>
         <p className="lead">Value and count at each stage for the current filters.</p>
-        <svg viewBox={`0 0 ${funnelW} ${funnelH}`} width={funnelW} role="img" aria-label="Pipeline value by stage">
-          {funnel.rows.map((d, k) => {
-            const y = k * rowH + 4
-            const w = (d.v / funnel.max) * bw
+        <div className="stage-funnel" role="img" aria-label="Pipeline value by stage">
+          {funnel.rows.map((d) => {
+            const pct = funnel.max > 0 ? (d.v / funnel.max) * 100 : 0
             const op = 0.22 + 0.78 * (d.i / (funnel.stages.length - 1))
             return (
-              <g key={d.s}>
-                <text x={0} y={y + 20} fill="var(--fg)">{d.s}</text>
-                <rect x={lx} y={y + 6} width={bw} height={20} fill="var(--surface-2)" />
-                <rect x={lx} y={y + 6} width={Math.max(d.v ? 2 : 0, w)} height={20} fill="var(--accent)" fillOpacity={op}>
-                  <title>{d.s}: {fmtInt(d.c)} opportunities, {fmtRM(d.v)}</title>
-                </rect>
-                <text x={lx + bw + 10} y={y + 20} fill="var(--fg)" className="t-mono">{fmtRM(d.v)}</text>
-                <text x={funnelW} y={y + 20} fill="var(--fg-2)" textAnchor="end" className="t-mono">{fmtInt(d.c)} {d.c === 1 ? 'deal' : 'deals'}</text>
-              </g>
+              <div className="stage-funnel-row" key={d.s} title={`${d.s}: ${fmtInt(d.c)} opportunities, ${fmtRM(d.v)}`}>
+                <span className="stage-funnel-name">{d.s}</span>
+                <div className="stage-funnel-bar" aria-hidden>
+                  <div
+                    className="stage-funnel-fill"
+                    style={{ width: `${Math.max(d.v ? 2 : 0, pct)}%`, opacity: op }}
+                  />
+                </div>
+                <div className="stage-funnel-stats">
+                  <span className="stage-funnel-amt num">{fmtRM(d.v)}</span>
+                  <span className="stage-funnel-count num">
+                    {fmtInt(d.c)} {d.c === 1 ? 'deal' : 'deals'}
+                  </span>
+                </div>
+              </div>
             )
           })}
-        </svg>
-        <p className="small muted" style={{ margin: '10px 0 0' }}>
+        </div>
+        <p className="small muted stage-funnel-foot">
           Lost: {fmtInt(funnel.lost.length)} {funnel.lost.length === 1 ? 'deal' : 'deals'}, {fmtRM(funnel.lost.reduce((a, o) => a + num(o.value), 0))}.
         </p>
       </section>

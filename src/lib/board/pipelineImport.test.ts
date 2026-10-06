@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { opportunitiesToCsv } from './pipelineCsv'
 import { parsePipelineCsv } from './pipelineImport'
-import type { Opportunity } from './types'
+import type { BoardData, Opportunity } from './types'
 
-const people = [{ id: 'p1', name: 'Hafsham' }]
+const boardData = (opps: Opportunity[]): BoardData => ({
+  people: [{ id: 'p1', name: 'Hafsham', email: '', profileId: null, isActive: true }],
+  profiles: [],
+  settings: { year: 2026, target: 0, financeRevenue: 0, financeAsOf: '' },
+  commitments: [],
+  opps,
+  prospects: [],
+  reviews: [],
+  history: [],
+})
 
 describe('pipelineImport', () => {
   it('round-trips export headers and ISO dates', () => {
@@ -13,6 +22,7 @@ describe('pipelineImport', () => {
       item: 'Widget',
       segment: 'Tech',
       ownerId: 'p1',
+      ownerIds: ['p1'],
       stage: 'Lead',
       value: null,
       revenueYear: 2025,
@@ -33,8 +43,8 @@ describe('pipelineImport', () => {
       updatedAt: '',
       updatedBy: null,
     }
-    const csv = opportunitiesToCsv([opp], (id) => (id === 'p1' ? 'Hafsham' : ''))
-    const parsed = parsePipelineCsv(csv, people, 2026)
+    const csv = opportunitiesToCsv([opp], boardData([opp]))
+    const parsed = parsePipelineCsv(csv, boardData([opp]).people, 2026)
     expect(parsed.errors).toHaveLength(0)
     expect(parsed.rows).toHaveLength(1)
     expect(parsed.rows[0].input.value).toBeNull()
@@ -46,7 +56,7 @@ describe('pipelineImport', () => {
     const header = 'Account,Item,Segment,Owner,Stage,Value (RM),Revenue year,Quote no,Quote sent,LOA / PO date,Expected invoice month,Delivery start,Probability (%),Next step,Next step owner,Next step date,Link (https://),Notes'
     const parsed = parsePipelineCsv(
       `${header}\nCo,Thing,Tech,Nobody,Lead,,2025,,,,,,,,,,`,
-      people,
+      boardData([]).people,
       2026,
     )
     expect(parsed.rows).toHaveLength(0)

@@ -164,12 +164,12 @@ export function computeOwners(data: BoardData, filters: BoardFilters, personName
     if (!uniqueIds.some((x) => x === id)) uniqueIds.push(id)
   }
   data.people.filter((p) => p.isActive).forEach((p) => pushId(p.id))
-  if (rNoOwner.some((o) => !o.ownerId)) pushId(null)
+  if (rNoOwner.some((o) => !o.ownerIds.length)) pushId(null)
   rNoOwner.forEach((o) => {
-    if (o.ownerId) pushId(o.ownerId)
+    o.ownerIds.forEach((pid) => pushId(pid))
   })
   const rows = uniqueIds.map((id) => {
-    const mine = rNoOwner.filter((o) => (o.ownerId || null) === id)
+    const mine = rNoOwner.filter((o) => (id == null ? !o.ownerIds.length : o.ownerIds.includes(id)))
     const y = mine.filter((o) => o.revenueYear === yr && o.stage !== 'Lost')
     return {
       id,

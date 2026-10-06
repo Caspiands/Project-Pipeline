@@ -1,19 +1,22 @@
 import type { Database } from '@/lib/database.types'
 import { num } from '@/lib/format'
 import type { Segment, Stage } from '@/lib/stages'
+import { sortOwnerIds } from './owners'
 import type { AuditEntry, BoardData, Opportunity, OpportunityInput, Prospect, StageHistoryEntry } from './types'
 
 type OppRow = Database['public']['Tables']['opportunities']['Row']
 type ProsRow = Database['public']['Tables']['prospects']['Row']
 type AuditRow = Database['public']['Tables']['audit_log']['Row']
 
-export function mapOpp(r: OppRow): Opportunity {
+export function mapOpp(r: OppRow, ownerIds: string[] = []): Opportunity {
+  const ids = ownerIds.length ? ownerIds : r.owner_id ? [r.owner_id] : []
   return {
     id: r.id,
     account: r.account,
     item: r.item,
     segment: r.segment as Segment,
     ownerId: r.owner_id || null,
+    ownerIds: ids,
     stage: r.stage as Stage,
     value: r.value == null ? null : Number(r.value),
     revenueYear: r.revenue_year,
@@ -37,11 +40,12 @@ export function mapOpp(r: OppRow): Opportunity {
 }
 
 export function unmapOpp(o: OpportunityInput) {
+  const primary = o.ownerIds?.[0] ?? o.ownerId ?? null
   return {
     account: o.account,
     item: o.item,
     segment: o.segment,
-    owner_id: o.ownerId || null,
+    owner_id: primary,
     stage: o.stage,
     value: o.value,
     revenue_year: o.revenueYear,
@@ -113,16 +117,34 @@ export function assembleBoardData(raw: {
   prospects: ProsRow[]
   reviews: Database['public']['Tables']['reviews']['Row'][]
   history: Database['public']['Tables']['stage_history']['Row'][]
+  oppOwners?: { opportunity_id: string; person_id: string }[]
 }): BoardData {
-  const s = raw.settings
-  return {
-    people: raw.people.map((r) => ({
+  const ownerMap = new Map<string, string[]>()
+  for (const row of raw.oppOwners ?? []) {
+    const list = ownerMap.get(row.opportunity_id) ?? []
+    list.push(row.person_id)
+    ownerMap.set(row.opportunity_id, list)
+  }
+  const people = raw.people.map((r) => ({
       id: r.id,
       name: r.name,
       email: r.email || '',
       profileId: r.profile_id,
       isActive: r.is_active,
-    })),
+    }))
+  const sortStub: BoardData = {
+    people,
+    profiles: [],
+    settings: { year: 2026, target: 0, financeRevenue: 0, financeAsOf: '' },
+    commitments: [],
+    opps: [],
+    prospects: [],
+    reviews: [],
+    history: [],
+  }
+  const s = raw.settings
+  return {
+    people,
     profiles: raw.profiles.map((r) => ({
       id: r.id,
       email: r.email,
@@ -137,7 +159,10 @@ export function assembleBoardData(raw: {
       financeAsOf: s?.finance_as_of || '',
     },
     commitments: raw.commitments.map((r) => ({ personId: r.person_id, year: r.year, amount: num(r.amount) })),
-    opps: raw.opps.map(mapOpp),
+    opps: raw.opps.map((r) => {
+      const ids = sortOwnerIds(ownerMap.get(r.id) ?? [], sortStub)
+      return mapOpp(r, ids)
+    }),
     prospects: raw.prospects.map(mapPros),
     reviews: raw.reviews.map((r) => ({ id: r.id, at: r.reviewed_at, by: r.reviewed_by, notes: r.notes })),
     history: raw.history.map(
