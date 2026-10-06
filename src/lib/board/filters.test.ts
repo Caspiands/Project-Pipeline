@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { filterOpportunities, isOverdue } from './filters'
+import { STAGES } from '@/lib/stages'
+import { pipelineRows } from './calculations'
+import { filterOpportunities, filterOpportunityViews, isOverdue } from './filters'
 import { mockBoardData } from '@/test/mockBoardData'
 import { DEFAULT_FILTERS } from './types'
 
@@ -27,33 +29,61 @@ describe('filterOpportunities', () => {
     expect(isOverdue(o, '2026-10-02')).toBe(true)
   })
 
-  it('includes a deal when any invoice matches year and stage filters', () => {
+  it('filters by each invoice stage the same way (include matching, exclude others)', () => {
+    const baseInv = mockBoardData.opps[0].invoices[0]
+    const invoices = STAGES.map((stage, i) => ({
+      ...baseInv,
+      id: `i-${i}`,
+      revenueYear: 2026,
+      stage,
+    }))
+    const data = {
+      ...mockBoardData,
+      opps: [{ ...mockBoardData.opps[0], id: 'multi-stage', invoices }],
+    }
+    const baseFilters = { ...DEFAULT_FILTERS, year: '2026' as const }
+
+    for (const stage of STAGES) {
+      const filters = { ...baseFilters, stage }
+      const views = filterOpportunityViews(data, filters)
+      expect(views.map((v) => v.deal.id)).toEqual(['multi-stage'])
+      expect(views[0].invoices.map((i) => i.stage)).toEqual([stage])
+      expect(pipelineRows(data, filters).map((o) => o.id)).toEqual(['multi-stage'])
+      expect(filterOpportunities(data, filters).map((o) => o.id)).toEqual(['multi-stage'])
+    }
+
+    for (const stage of STAGES) {
+      const other = STAGES.find((s) => s !== stage)!
+      const views = filterOpportunityViews(data, { ...baseFilters, stage })
+      expect(views[0].invoices.some((i) => i.stage === other)).toBe(false)
+    }
+  })
+
+  it('shows all-lost deals when stage is Lost even if show lost is off', () => {
     const baseInv = mockBoardData.opps[0].invoices[0]
     const data = {
       ...mockBoardData,
       opps: [
         {
           ...mockBoardData.opps[0],
-          id: 'mixed',
+          id: 'all-lost',
           invoices: [
-            { ...baseInv, id: 'i-inv', revenueYear: 2026, stage: 'Invoiced' as const },
-            { ...baseInv, id: 'i-prop', revenueYear: 2026, stage: 'Proposal' as const },
+            { ...baseInv, id: 'l1', revenueYear: 2026, stage: 'Lost' as const },
+            { ...baseInv, id: 'l2', revenueYear: 2026, stage: 'Lost' as const },
           ],
         },
       ],
     }
-    const proposal = filterOpportunities(data, {
+    const hidden = filterOpportunities(data, { ...DEFAULT_FILTERS, year: '2026', lost: false, stage: 'all' })
+    expect(hidden).toHaveLength(0)
+    const lostOnly = filterOpportunities(data, {
       ...DEFAULT_FILTERS,
       year: '2026',
-      stage: 'Proposal',
+      lost: false,
+      stage: 'Lost',
     })
-    expect(proposal.map((o) => o.id)).toEqual(['mixed'])
-    const paid = filterOpportunities(data, {
-      ...DEFAULT_FILTERS,
-      year: '2026',
-      stage: 'Paid',
-    })
-    expect(paid).toHaveLength(0)
+    expect(lostOnly.map((o) => o.id)).toEqual(['all-lost'])
+    expect(pipelineRows(data, { ...DEFAULT_FILTERS, year: '2026', lost: false, stage: 'Lost' })).toHaveLength(1)
   })
 
   it('filters by invoice month and quote range', () => {

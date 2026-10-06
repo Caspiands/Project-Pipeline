@@ -223,10 +223,7 @@ export function computeOwners(data: BoardData, filters: BoardFilters, personName
 }
 
 export function pipelineRows(data: BoardData, filters: BoardFilters): Opportunity[] {
-  const views = filterOpportunityViews(data, filters)
-  let deals = views.map((v) => v.deal)
-  if (!filters.lost) deals = deals.filter((d) => !d.invoices.every((i) => i.stage === 'Lost'))
-  return deals
+  return filterOpportunityViews(data, filters).map((v) => v.deal)
 }
 
 export { todayISO }

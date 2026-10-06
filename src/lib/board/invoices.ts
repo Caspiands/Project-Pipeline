@@ -104,7 +104,7 @@ export function filterDeals(
     if (filters.account !== 'all' && o.account.trim() !== filters.account) continue
     if (!opportunityMatchesKeyword(data, o, filters.q)) continue
 
-    if (respectLost && !filters.lost && dealAllLost(o.invoices)) continue
+    if (respectLost && !filters.lost && filters.stage === 'all' && dealAllLost(o.invoices)) continue
 
     const invs = matchingInvoices(o, filters, respectStage)
     if (!invs.length) continue
