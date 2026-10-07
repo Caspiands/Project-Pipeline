@@ -1,5 +1,5 @@
 import { useBoard } from '@/lib/board/BoardProvider'
-import type { OpenPipelineFilters } from '@/lib/board/openPipeline'
+import { distinctOpenInvoiceYears, type OpenPipelineFilters } from '@/lib/board/openPipeline'
 import { activePeople } from '@/lib/board/names'
 import { uniqueAccountsSorted } from '@/lib/board/owners'
 import { fmtInt } from '@/lib/format'
@@ -19,6 +19,9 @@ export function OpenPipelineFiltersBar({ filters, onChange, matchCount, dealTota
   const ownerValue = [...people.map((p) => p.id), 'none', 'all'].includes(filters.owner) ? filters.owner : 'all'
   const accounts = uniqueAccountsSorted(data)
   const accountValue = filters.account === 'all' || accounts.includes(filters.account) ? filters.account : 'all'
+  const years = distinctOpenInvoiceYears(data)
+  const yearValue =
+    filters.invoiceYear === 'all' || years.map(String).includes(filters.invoiceYear) ? filters.invoiceYear : 'all'
 
   return (
     <div className="filters" data-testid="open-pipeline-filters">
@@ -47,6 +50,15 @@ export function OpenPipelineFiltersBar({ filters, onChange, matchCount, dealTota
           <option value="all">All</option>
           {accounts.map((a) => (
             <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Invoice year
+        <select value={yearValue} onChange={(e) => onChange({ invoiceYear: e.target.value })}>
+          <option value="all">All</option>
+          {years.map((y) => (
+            <option key={y} value={String(y)}>{y}</option>
           ))}
         </select>
       </label>

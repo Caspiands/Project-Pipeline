@@ -1,7 +1,7 @@
 import { sumInvoiceAmounts, type FilteredDealView } from './invoices'
 import { opportunityMatchesKeyword } from './opportunitySearch'
 import { opportunityMatchesOwner } from './owners'
-import type { BoardData, Opportunity } from './types'
+import type { BoardData, Opportunity, OpportunityInvoice } from './types'
 import { isOpenStage, OPEN_STAGES, type Stage } from '@/lib/stages'
 
 export interface OpenPipelineFilters {
@@ -9,6 +9,7 @@ export interface OpenPipelineFilters {
   owner: string
   account: string
   q: string
+  invoiceYear: 'all' | string
 }
 
 export const DEFAULT_OPEN_PIPELINE_FILTERS: OpenPipelineFilters = {
@@ -16,10 +17,26 @@ export const DEFAULT_OPEN_PIPELINE_FILTERS: OpenPipelineFilters = {
   owner: 'all',
   account: 'all',
   q: '',
+  invoiceYear: 'all',
+}
+
+/** Expected invoice calendar year: from invoice month when set, otherwise revenue year. */
+export function invoiceExpectationYear(inv: OpportunityInvoice): number {
+  if (inv.invoiceMonth && inv.invoiceMonth.length >= 4) {
+    const y = Number(inv.invoiceMonth.slice(0, 4))
+    if (!Number.isNaN(y)) return y
+  }
+  return inv.revenueYear
 }
 
 export function openInvoicesForDeal(deal: Opportunity) {
   return deal.invoices.filter((i) => isOpenStage(i.stage))
+}
+
+function openInvoicesMatchingYear(openInvs: OpportunityInvoice[], invoiceYear: string) {
+  if (invoiceYear === 'all') return openInvs
+  const y = Number(invoiceYear)
+  return openInvs.filter((i) => invoiceExpectationYear(i) === y)
 }
 
 function dealMatchesNarrow(data: BoardData, deal: Opportunity, filters: OpenPipelineFilters): boolean {
@@ -34,12 +51,22 @@ function dealMatchesNarrow(data: BoardData, deal: Opportunity, filters: OpenPipe
 export function computeOpenPipelineViews(data: BoardData, filters: OpenPipelineFilters): FilteredDealView[] {
   const out: FilteredDealView[] = []
   for (const o of data.opps) {
-    const openInvs = openInvoicesForDeal(o)
+    const openInvs = openInvoicesMatchingYear(openInvoicesForDeal(o), filters.invoiceYear)
     if (!openInvs.length) continue
     if (!dealMatchesNarrow(data, o, filters)) continue
     out.push({ deal: o, invoices: openInvs, total: sumInvoiceAmounts(openInvs) })
   }
   return out
+}
+
+export function distinctOpenInvoiceYears(data: BoardData): number[] {
+  const ys = new Set<number>()
+  for (const o of data.opps) {
+    for (const inv of openInvoicesForDeal(o)) {
+      ys.add(invoiceExpectationYear(inv))
+    }
+  }
+  return [...ys].sort((a, b) => b - a)
 }
 
 export interface OpenStageSummary {
@@ -67,4 +94,24 @@ export function computeOpenPipelineSummary(views: FilteredDealView[]): OpenPipel
     totalRm: sumInvoiceAmounts(allInv),
     byStage,
   }
+}
+
+/** Per-calendar-year slice of open pipeline (for year blocks when invoice year is All). */
+export function computeOpenPipelineSummaryForYear(views: FilteredDealView[], year: number): OpenPipelineSummary {
+  const sliced: FilteredDealView[] = []
+  for (const v of views) {
+    const invs = v.invoices.filter((i) => invoiceExpectationYear(i) === year)
+    if (!invs.length) continue
+    sliced.push({ deal: v.deal, invoices: invs, total: sumInvoiceAmounts(invs) })
+  }
+  return computeOpenPipelineSummary(sliced)
+}
+
+export interface OpenPipelineYearBlock {
+  year: number
+  summary: OpenPipelineSummary
+}
+
+export function computeOpenPipelineYearBlocks(views: FilteredDealView[], years: number[]): OpenPipelineYearBlock[] {
+  return years.map((year) => ({ year, summary: computeOpenPipelineSummaryForYear(views, year) }))
 }
