@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
 import { lastReviewAt } from '@/lib/board/calculations'
-import { filterOpportunities, isOverdue } from '@/lib/board/filters'
+import { effectiveBoardFilters, filterOpportunities, isOverdue } from '@/lib/board/filters'
 import { formatDealStageLabel, sumInvoiceAmounts, dealHasAnyStage, dealHasOpenInvoice, dealHasWonInvoice } from '@/lib/board/invoices'
 import { ownersLabel } from '@/lib/board/owners'
 import { profileName } from '@/lib/board/names'
@@ -11,7 +12,9 @@ import { daysSince, fmtDate, fmtInt, fmtRM, todayISO } from '@/lib/format'
 import type { Opportunity } from '@/lib/board/types'
 
 export function ReviewPage() {
+  const { pathname } = useLocation()
   const { data, filters, openEdit, markReview } = useBoard()
+  const boardFilters = effectiveBoardFilters(filters, pathname)
   const auth = useAuth()
   const canWrite = auth.status?.role === 'admin' || auth.status?.role === 'editor'
   const [busy, setBusy] = useState(false)
@@ -19,7 +22,7 @@ export function ReviewPage() {
   const lists = useMemo(() => {
     if (!data) return null
     const lr = lastReviewAt(data)
-    const r = filterOpportunities(data, filters)
+    const r = filterOpportunities(data, boardFilters)
     const ids = new Set(r.map((o) => o.id))
     const after = (iso: string) => lr && iso && iso > lr
     const added = r.filter((o) => after(o.createdAt))
@@ -43,7 +46,7 @@ export function ReviewPage() {
       .sort((a, b) => (a.startDate! < b.startDate! ? -1 : 1))
     const noStart = r.filter((o) => dealHasAnyStage(o, ['LOA/PO', 'Verbal yes']) && !o.startDate)
     return { lr, od, moved, added, stale, soon, noStart, lim }
-  }, [data, filters])
+  }, [data, boardFilters])
 
   if (!data || !lists) return <div className="empty">Loading review…</div>
 

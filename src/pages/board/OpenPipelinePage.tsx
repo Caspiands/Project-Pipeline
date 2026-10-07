@@ -4,7 +4,6 @@ import { OpenPipelineYearBlocks } from '@/components/OpenPipelineYearBlocks'
 import { PipelineTable, sortPipelineRows, type PipelineSortKey } from '@/components/PipelineTable'
 import { useAuth } from '@/lib/auth/auth'
 import { useBoard } from '@/lib/board/BoardProvider'
-import { sumInvoiceAmounts } from '@/lib/board/invoices'
 import {
   computeOpenPipelineSummary,
   computeOpenPipelineViews,

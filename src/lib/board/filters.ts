@@ -3,6 +3,12 @@ import { todayISO } from '@/lib/format'
 import { filterDeals } from './invoices'
 import type { BoardData, BoardFilters, Opportunity } from './types'
 
+/** Stage filter applies on Pipeline only; persisted stage must not narrow Overview or Review. */
+export function effectiveBoardFilters(filters: BoardFilters, pathname: string): BoardFilters {
+  if (pathname.startsWith('/pipeline')) return filters
+  return { ...filters, stage: 'all' }
+}
+
 export interface FilterOptions {
   respectLostToggle?: boolean
   respectStageFilter?: boolean

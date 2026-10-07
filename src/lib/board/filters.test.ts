@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { STAGES } from '@/lib/stages'
 import { pipelineRows } from './calculations'
-import { filterOpportunities, filterOpportunityViews, isOverdue } from './filters'
+import { effectiveBoardFilters, filterOpportunities, filterOpportunityViews, isOverdue } from './filters'
 import { mockBoardData } from '@/test/mockBoardData'
 import { DEFAULT_FILTERS } from './types'
 
@@ -27,6 +27,22 @@ describe('filterOpportunities', () => {
   it('marks overdue open rows before today in KL', () => {
     const o = { ...mockBoardData.opps[0], nextDate: '2020-01-01' }
     expect(isOverdue(o, '2026-10-02')).toBe(true)
+  })
+
+  it('keeps invoiced deals when stage is all', () => {
+    const inv = mockBoardData.opps[0].invoices[0]
+    const data = {
+      ...mockBoardData,
+      opps: [
+        {
+          ...mockBoardData.opps[0],
+          id: 'inv',
+          invoices: [{ ...inv, id: 'i1', stage: 'Invoiced' as const, revenueYear: 2026, amount: 500 }],
+        },
+      ],
+    }
+    expect(filterOpportunities(data, DEFAULT_FILTERS)).toHaveLength(1)
+    expect(effectiveBoardFilters({ ...DEFAULT_FILTERS, stage: 'Lead' }, '/overview').stage).toBe('all')
   })
 
   it('filters by each invoice stage the same way (include matching, exclude others)', () => {

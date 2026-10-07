@@ -8,7 +8,9 @@ import {
 } from '@/lib/board/calculations'
 import { pieByOwnerFromViews, pieBySegmentFromViews, pieByStageFromViews } from '@/lib/board/overviewPies'
 import { filterOpportunityViews } from '@/lib/board/filters'
+import { useLocation } from 'react-router-dom'
 import { useBoard } from '@/lib/board/BoardProvider'
+import { effectiveBoardFilters } from '@/lib/board/filters'
 import type { RefObject } from 'react'
 import { personName } from '@/lib/board/names'
 import { useSvgWidth } from '@/lib/board/useSvgWidth'
@@ -87,20 +89,22 @@ function TargetChart({ data: t, W, innerRef }: { data: TargetBlockData; W: numbe
 }
 
 export function OverviewPageContent() {
+  const { pathname } = useLocation()
   const { data, filters } = useBoard()
+  const boardFilters = effectiveBoardFilters(filters, pathname)
   const [targetRef, targetW] = useSvgWidth()
   const [pieRef, pieW] = useSvgWidth()
   const [invoiceRef, invoiceW] = useSvgWidth()
 
   if (!data) return <div className="empty">Loading overview…</div>
 
-  const target = computeTargetBlock(data, filters)
-  const tiles = computeTiles(data, filters)
-  const funnel = computeFunnel(data, filters)
-  const invoices = computeInvoices(data, filters)
-  const owners = computeOwners(data, filters, (id) => personName(data, id))
+  const target = computeTargetBlock(data)
+  const tiles = computeTiles(data, boardFilters)
+  const funnel = computeFunnel(data, boardFilters)
+  const invoices = computeInvoices(data, boardFilters)
+  const owners = computeOwners(data, boardFilters, (id) => personName(data, id))
   const yr = data.settings.year
-  const pieViews = filterOpportunityViews(data, filters, { respectLostToggle: false })
+  const pieViews = filterOpportunityViews(data, boardFilters, { respectLostToggle: false })
   const pieColW = Math.max(240, Math.floor(pieW / 3) - 8)
 
   const invH = 230
@@ -126,12 +130,12 @@ export function OverviewPageContent() {
         <h2>Value breakdown</h2>
         <p className="lead">Share of value in the filtered pipeline (raw totals, not weighted).</p>
         <div className="grid g3 pies">
-          <ValuePieChart title="By stage" rows={pieByStageFromViews(pieViews, filters.year)} width={pieColW} />
-          <ValuePieChart title="By segment" rows={pieBySegmentFromViews(pieViews, filters.year)} width={pieColW} />
-          <ValuePieChart title="By owner" rows={pieByOwnerFromViews(data, pieViews, filters.year)} width={pieColW} />
+          <ValuePieChart title="By stage" rows={pieByStageFromViews(pieViews, boardFilters.year)} width={pieColW} />
+          <ValuePieChart title="By segment" rows={pieBySegmentFromViews(pieViews, boardFilters.year)} width={pieColW} />
+          <ValuePieChart title="By owner" rows={pieByOwnerFromViews(data, pieViews, boardFilters.year)} width={pieColW} />
         </div>
       </section>
-      <YearOnYearAccounts data={data} filters={filters} />
+      <YearOnYearAccounts data={data} filters={boardFilters} />
       <section className="block">
         <h2>Where the money sits, by stage</h2>
         <p className="lead">Value and count at each stage for the current filters.</p>

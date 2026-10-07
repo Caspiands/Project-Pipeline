@@ -6,7 +6,7 @@ import {
   distinctQuoteMonths,
   quarterLabel,
 } from '@/lib/board/dateFilters'
-import { filterOpportunities } from '@/lib/board/filters'
+import { effectiveBoardFilters, filterOpportunities } from '@/lib/board/filters'
 import { invoiceRevenueYears } from '@/lib/board/revenueYearAllocation'
 import { presentYearKl, sortYearsFromPresent } from '@/lib/format'
 import { activePeople } from '@/lib/board/names'
@@ -23,7 +23,8 @@ export function FilterBar() {
   if (!data) return null
 
   const people = activePeople(data)
-  const matchCount = filterOpportunities(data, filters).length
+  const boardFilters = effectiveBoardFilters(filters, pathname)
+  const matchCount = filterOpportunities(data, boardFilters).length
   const ownerValue = [...people.map((p) => p.id), 'none', 'all'].includes(filters.owner) ? filters.owner : 'all'
 
   const accounts = uniqueAccountsSorted(data)

@@ -3,7 +3,7 @@
  */
 import { fmtInt, fmtRM, monthKey, num, todayISO } from '@/lib/format'
 import { isOpenStage, isWonStage, STAGES } from '@/lib/stages'
-import { FINANCE_BOOKED_RULE } from './financeBooked'
+import { computeFinanceBooked, FINANCE_BOOKED_RULE } from './financeBooked'
 import { filterOpportunityViews, isOverdue } from './filters'
 import { sumInvoiceAmounts } from './invoices'
 import {
@@ -47,35 +47,17 @@ function openInvoicesForYear(views: ReturnType<typeof filterOpportunityViews>, y
   return out
 }
 
-const BOOKED_STAGES = new Set(['LOA/PO', 'Invoiced', 'Paid'])
-
-function financeBookedFromViews(views: ReturnType<typeof filterOpportunityViews>, yr: number) {
-  let countLoaPo = 0
-  let countInvoicedPaid = 0
-  const nums: number[] = []
-  for (const v of views) {
-    for (const inv of v.invoices) {
-      if (!invoiceMatchesRevenueYear(inv, yr) || !BOOKED_STAGES.has(inv.stage)) continue
-      if (inv.stage === 'LOA/PO') countLoaPo++
-      if (inv.stage === 'Invoiced' || inv.stage === 'Paid') countInvoicedPaid++
-      const share = invoiceAmountInRevenueYear(inv, yr)
-      if (share != null) nums.push(share)
-    }
-  }
-  const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null
-  return { total, countLoaPo, countInvoicedPaid }
-}
-
-export function computeTargetBlock(data: BoardData, filters: BoardFilters = DEFAULT_FILTERS): TargetBlockData {
+export function computeTargetBlock(data: BoardData): TargetBlockData {
   const st = data.settings
   const yr = st.year
   const target = num(st.target)
-  const yearFilter = filters.year !== 'all' ? filters.year : String(yr)
-  const views = filterOpportunityViews(data, { ...filters, year: yearFilter }, {
-    respectLostToggle: false,
-  })
-  const finance = financeBookedFromViews(views, yr)
+  const finance = computeFinanceBooked(data, yr)
   const booked = finance.total
+  const views = filterOpportunityViews(
+    data,
+    { ...DEFAULT_FILTERS, year: String(yr) },
+    { respectLostToggle: false, respectStageFilter: false },
+  )
   const bookedForGap = booked ?? 0
   const open = openInvoicesForYear(views, yr)
   const by = (s: string) =>
