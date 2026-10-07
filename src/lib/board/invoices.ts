@@ -1,6 +1,7 @@
 import { invoiceMonthKey, monthKeyFromDate, quarterKeyFromMonth } from './dateFilters'
 import { opportunityMatchesKeyword } from './opportunitySearch'
 import { opportunityMatchesOwner } from './owners'
+import { invoiceMatchesRevenueYear, sumReportingAmounts } from './revenueYearAllocation'
 import type { BoardData, BoardFilters, Opportunity, OpportunityInvoice } from './types'
 import { isOpenStage, isWonStage, STAGES, type Stage } from '@/lib/stages'
 import { fmtInt } from '@/lib/format'
@@ -12,7 +13,7 @@ export function sumInvoiceAmounts(invoices: { amount: number | null }[]): number
 }
 
 export function invoiceMatchesFilters(inv: OpportunityInvoice, filters: BoardFilters, deal: Opportunity): boolean {
-  if (filters.year !== 'all' && String(inv.revenueYear) !== filters.year) return false
+  if (filters.year !== 'all' && !invoiceMatchesRevenueYear(inv, Number(filters.year))) return false
   if (filters.stage !== 'all' && inv.stage !== filters.stage) return false
   if (filters.invoiceMonth !== 'all') {
     const im = invoiceMonthKey(inv.invoiceMonth)
@@ -113,7 +114,7 @@ export function filterDeals(
     const invs = matchingInvoices(o, filters, respectStage)
     if (!invs.length) continue
 
-    out.push({ deal: o, invoices: invs, total: sumInvoiceAmounts(invs) })
+    out.push({ deal: o, invoices: invs, total: sumReportingAmounts(invs, filters.year) })
   }
   return out
 }

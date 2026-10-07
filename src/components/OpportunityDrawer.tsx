@@ -4,6 +4,7 @@ import { useBoard } from '@/lib/board/BoardProvider'
 import { activePeople, profileName } from '@/lib/board/names'
 import { dominantOwnerIdsForAccount, uniqueAccountsSorted } from '@/lib/board/owners'
 import { sumInvoiceAmounts } from '@/lib/board/invoices'
+import { RevenueYearInput } from '@/components/RevenueYearInput'
 import { RmAmountInput } from '@/components/RmAmountInput'
 import { fmtDate, fmtRMCents } from '@/lib/format'
 import { SEGMENTS, STAGES } from '@/lib/stages'
@@ -227,11 +228,11 @@ export function OpportunityDrawer() {
                   </div>
                   <div className="field">
                     <span>Revenue year</span>
-                    <input
-                      type="number"
+                    <RevenueYearInput
                       disabled={!canWrite}
-                      value={inv.revenueYear}
-                      onChange={(e) => setInvoice(idx, { revenueYear: Number(e.target.value) })}
+                      revenueYear={inv.revenueYear}
+                      revenueYear2={inv.revenueYear2}
+                      onChange={(years) => setInvoice(idx, years)}
                     />
                   </div>
                   <div className="field">

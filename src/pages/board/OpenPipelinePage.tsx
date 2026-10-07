@@ -51,8 +51,12 @@ export function OpenPipelinePage() {
     return sortPipelineRows(deals, sort, data, viewById, true)
   }, [data, views, sort, viewById])
 
-  const summary = useMemo(() => computeOpenPipelineSummary(views), [views])
-  const total = useMemo(() => sumInvoiceAmounts(views.flatMap((v) => v.invoices)), [views])
+  const summary = useMemo(() => computeOpenPipelineSummary(views, narrow.invoiceYear), [views, narrow.invoiceYear])
+  const total = useMemo(() => {
+    const nums = views.map((v) => v.total).filter((v): v is number => v != null)
+    if (!nums.length) return null
+    return nums.reduce((a, b) => a + b, 0)
+  }, [views])
 
   const yearBlocks = useMemo(() => {
     if (!data) return []

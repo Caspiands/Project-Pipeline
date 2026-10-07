@@ -1,4 +1,5 @@
 import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth } from '@/lib/format'
+import { formatInvoiceRevenueYears } from './revenueYearAllocation'
 import { ownersLabel } from './owners'
 import { personName } from './names'
 import type { BoardData, Opportunity } from './types'
@@ -10,6 +11,7 @@ export function opportunitySearchHaystack(data: BoardData, o: Opportunity): stri
     return [
       inv.stage,
       String(inv.revenueYear),
+      formatInvoiceRevenueYears(inv),
       inv.invoiceMonth ?? '',
       inv.invoiceMonth ? fmtMonth(inv.invoiceMonth) : '',
       inv.amount == null ? '' : String(inv.amount),

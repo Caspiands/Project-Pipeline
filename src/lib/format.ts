@@ -7,6 +7,23 @@ export const KL_TIME_ZONE = 'Asia/Kuala_Lumpur'
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** Today's date as YYYY-MM-DD in Kuala Lumpur, whatever the browser's own time zone. */
+/** Calendar year in Kuala Lumpur (for open-pipeline year ordering). */
+export function presentYearKl(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: KL_TIME_ZONE,
+    year: 'numeric',
+  }).formatToParts(now)
+  return Number(parts.find((p) => p.type === 'year')?.value ?? '0')
+}
+
+/** Present year first, then later years ascending, then earlier years (oldest last). */
+export function sortYearsFromPresent(years: number[], presentYear: number): number[] {
+  const uniq = [...new Set(years)]
+  const future = uniq.filter((y) => y >= presentYear).sort((a, b) => a - b)
+  const past = uniq.filter((y) => y < presentYear).sort((a, b) => a - b)
+  return [...future, ...past]
+}
+
 export function todayISO(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: KL_TIME_ZONE,

@@ -126,9 +126,9 @@ export function OverviewPageContent() {
         <h2>Value breakdown</h2>
         <p className="lead">Share of value in the filtered pipeline (raw totals, not weighted).</p>
         <div className="grid g3 pies">
-          <ValuePieChart title="By stage" rows={pieByStageFromViews(pieViews)} width={pieColW} />
-          <ValuePieChart title="By segment" rows={pieBySegmentFromViews(pieViews)} width={pieColW} />
-          <ValuePieChart title="By owner" rows={pieByOwnerFromViews(data, pieViews)} width={pieColW} />
+          <ValuePieChart title="By stage" rows={pieByStageFromViews(pieViews, filters.year)} width={pieColW} />
+          <ValuePieChart title="By segment" rows={pieBySegmentFromViews(pieViews, filters.year)} width={pieColW} />
+          <ValuePieChart title="By owner" rows={pieByOwnerFromViews(data, pieViews, filters.year)} width={pieColW} />
         </div>
       </section>
       <YearOnYearAccounts data={data} filters={filters} />

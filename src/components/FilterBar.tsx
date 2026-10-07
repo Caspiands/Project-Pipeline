@@ -7,6 +7,8 @@ import {
   quarterLabel,
 } from '@/lib/board/dateFilters'
 import { filterOpportunities } from '@/lib/board/filters'
+import { invoiceRevenueYears } from '@/lib/board/revenueYearAllocation'
+import { presentYearKl, sortYearsFromPresent } from '@/lib/format'
 import { activePeople } from '@/lib/board/names'
 import { uniqueAccountsSorted } from '@/lib/board/owners'
 import { fmtInt, fmtMonth } from '@/lib/format'
@@ -26,7 +28,10 @@ export function FilterBar() {
 
   const accounts = uniqueAccountsSorted(data)
   const accountValue = filters.account === 'all' || accounts.includes(filters.account) ? filters.account : 'all'
-  const years = [...new Set(data.opps.flatMap((o) => o.invoices.map((i) => String(i.revenueYear))))].sort()
+  const years = sortYearsFromPresent(
+    data.opps.flatMap((o) => o.invoices.flatMap((i) => invoiceRevenueYears(i))),
+    presentYearKl(),
+  ).map(String)
   const invoiceMonths = distinctInvoiceMonths(data.opps)
   const invoiceQuarters = distinctQuarters(invoiceMonths)
   const quoteMonths = distinctQuoteMonths(data.opps)

@@ -1,3 +1,4 @@
+import { invoiceAmountInRevenueYear, invoiceMatchesRevenueYear } from './revenueYearAllocation'
 import type { BoardData } from './types'
 
 export const FINANCE_BOOKED_RULE =
@@ -17,10 +18,11 @@ export function computeFinanceBooked(data: BoardData, targetYear: number): Finan
   const nums: number[] = []
   for (const o of data.opps) {
     for (const inv of o.invoices) {
-      if (String(inv.revenueYear) !== String(targetYear) || !BOOKED_STAGES.has(inv.stage)) continue
+      if (!invoiceMatchesRevenueYear(inv, targetYear) || !BOOKED_STAGES.has(inv.stage)) continue
       if (inv.stage === 'LOA/PO') countLoaPo++
       if (inv.stage === 'Invoiced' || inv.stage === 'Paid') countInvoicedPaid++
-      if (inv.amount != null) nums.push(inv.amount)
+      const share = invoiceAmountInRevenueYear(inv, targetYear)
+      if (share != null) nums.push(share)
     }
   }
   const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null

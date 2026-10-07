@@ -4,6 +4,7 @@ import { formatDealStageLabel, primaryStageSince, primaryStageSinceInvoices, sum
 import type { FilteredDealView } from '@/lib/board/invoices'
 import { personName, profileName } from '@/lib/board/names'
 import { ownersLabel } from '@/lib/board/owners'
+import { formatInvoiceRevenueYears } from '@/lib/board/revenueYearAllocation'
 import type { Opportunity } from '@/lib/board/types'
 import { daysSince, fmtDate, fmtFull, fmtInt, fmtMonth } from '@/lib/format'
 import { STAGES, stageIndex, type Stage } from '@/lib/stages'
@@ -26,11 +27,11 @@ export const PIPELINE_TABLE_COLS = [
 
 export type PipelineSortKey = (typeof PIPELINE_TABLE_COLS)[number]['k']
 
-function yearLabel(invs: { revenueYear: number }[]): string {
-  const yrs = [...new Set(invs.map((i) => i.revenueYear))]
-  if (!yrs.length) return '—'
-  if (yrs.length === 1) return String(yrs[0])
-  return yrs.sort((a, b) => a - b).join(', ')
+function yearLabel(invs: Opportunity['invoices']): string {
+  const labels = [...new Set(invs.map((i) => formatInvoiceRevenueYears(i)))]
+  if (!labels.length) return '—'
+  if (labels.length === 1) return labels[0]
+  return labels.join(', ')
 }
 
 function monthLabel(invs: { invoiceMonth: string | null }[]): string {

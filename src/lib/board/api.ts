@@ -77,6 +77,7 @@ async function syncInvoices(opportunityId: string, invoices: OpportunityInvoiceI
         id: inv.id ?? '',
         amount: inv.amount,
         revenueYear: inv.revenueYear,
+        revenueYear2: inv.revenueYear2 ?? null,
         invoiceMonth: inv.invoiceMonth,
         stage: inv.stage,
         stageSince: null,

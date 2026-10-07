@@ -6,6 +6,12 @@ import { isOpenStage, isWonStage, STAGES } from '@/lib/stages'
 import { FINANCE_BOOKED_RULE } from './financeBooked'
 import { filterOpportunityViews, isOverdue } from './filters'
 import { sumInvoiceAmounts } from './invoices'
+import {
+  invoiceAmountInRevenueYear,
+  invoiceMatchesRevenueYear,
+  invoiceReportingAmount,
+  sumReportingAmounts,
+} from './revenueYearAllocation'
 import type { BoardData, BoardFilters, Opportunity, OpportunityInvoice } from './types'
 import { DEFAULT_FILTERS } from './types'
 
@@ -35,7 +41,7 @@ function openInvoicesForYear(views: ReturnType<typeof filterOpportunityViews>, y
   const out: OpportunityInvoice[] = []
   for (const v of views) {
     for (const inv of v.invoices) {
-      if (inv.revenueYear === yr && isOpenStage(inv.stage)) out.push(inv)
+      if (invoiceMatchesRevenueYear(inv, yr) && isOpenStage(inv.stage)) out.push(inv)
     }
   }
   return out
@@ -49,10 +55,11 @@ function financeBookedFromViews(views: ReturnType<typeof filterOpportunityViews>
   const nums: number[] = []
   for (const v of views) {
     for (const inv of v.invoices) {
-      if (inv.revenueYear !== yr || !BOOKED_STAGES.has(inv.stage)) continue
+      if (!invoiceMatchesRevenueYear(inv, yr) || !BOOKED_STAGES.has(inv.stage)) continue
       if (inv.stage === 'LOA/PO') countLoaPo++
       if (inv.stage === 'Invoiced' || inv.stage === 'Paid') countInvoicedPaid++
-      if (inv.amount != null) nums.push(inv.amount)
+      const share = invoiceAmountInRevenueYear(inv, yr)
+      if (share != null) nums.push(share)
     }
   }
   const total = nums.length ? nums.reduce((a, b) => a + b, 0) : null
@@ -71,7 +78,8 @@ export function computeTargetBlock(data: BoardData, filters: BoardFilters = DEFA
   const booked = finance.total
   const bookedForGap = booked ?? 0
   const open = openInvoicesForYear(views, yr)
-  const by = (s: string) => open.filter((i) => i.stage === s).reduce((a, i) => a + num(i.amount), 0)
+  const by = (s: string) =>
+    open.filter((i) => i.stage === s).reduce((a, i) => a + num(invoiceAmountInRevenueYear(i, yr)), 0)
   const loa = by('LOA/PO')
   const verbal = by('Verbal yes')
   const quoted = by('Quote sent')
@@ -109,7 +117,7 @@ export function computeTiles(data: BoardData, filters: BoardFilters) {
   const allInv = views.flatMap((v) => v.invoices)
   const open = allInv.filter((i) => isOpenStage(i.stage))
   const sum = (list: OpportunityInvoice[]) => {
-    const t = sumInvoiceAmounts(list)
+    const t = sumReportingAmounts(list, filters.year)
     return t == null ? 0 : t
   }
   const noVal = open.filter((i) => i.amount == null).length
@@ -147,7 +155,7 @@ export function computeFunnel(data: BoardData, filters: BoardFilters) {
   const stages = STAGES.filter((s) => s !== 'Lost')
   const rows = stages.map((s, i) => {
     const rs = invs.filter((inv) => inv.stage === s)
-    return { s, i, c: rs.length, v: rs.reduce((a, inv) => a + num(inv.amount), 0) }
+    return { s, i, c: rs.length, v: rs.reduce((a, inv) => a + num(invoiceReportingAmount(inv, filters.year)), 0) }
   })
   const lost = invs.filter((i) => i.stage === 'Lost')
   const max = Math.max(1, ...rows.map((d) => d.v))
@@ -168,8 +176,13 @@ export function computeInvoices(data: BoardData, filters: BoardFilters, now = ne
     return {
       m,
       c: rs.length,
-      a: rs.filter((inv) => String(inv.revenueYear) === yr).reduce((x, inv) => x + num(inv.amount), 0),
-      b: rs.filter((inv) => String(inv.revenueYear) !== yr).reduce((x, inv) => x + num(inv.amount), 0),
+      a: rs.reduce((x, inv) => x + num(invoiceAmountInRevenueYear(inv, Number(yr))), 0),
+      b: rs.reduce((x, inv) => {
+        if (inv.amount == null) return x
+        const inYr = invoiceAmountInRevenueYear(inv, Number(yr))
+        if (inYr == null) return x + num(inv.amount)
+        return x + num(inv.amount - inYr)
+      }, 0),
     }
   })
   const max = Math.max(1, ...rows.map((d) => d.a + d.b))
@@ -205,14 +218,16 @@ export function computeOwners(data: BoardData, filters: BoardFilters, personName
   views.forEach((v) => v.deal.ownerIds.forEach((pid) => pushId(pid)))
   const rows = uniqueIds.map((id) => {
     const mine = views.filter((v) => (id == null ? !v.deal.ownerIds.length : v.deal.ownerIds.includes(id)))
-    const yInv = mine.flatMap((v) => v.invoices.filter((i) => i.revenueYear === yr && i.stage !== 'Lost'))
+    const yInv = mine.flatMap((v) => v.invoices.filter((i) => invoiceMatchesRevenueYear(i, yr) && i.stage !== 'Lost'))
     const openDeals = mine.filter((v) => v.invoices.some((i) => isOpenStage(i.stage)))
     return {
       id,
       n: personName(id),
       com: id ? com(id) : null,
-      tr: yInv.reduce((a, i) => a + num(i.amount), 0),
-      sec: yInv.filter((i) => i.stage === 'LOA/PO' || isWonStage(i.stage)).reduce((a, i) => a + num(i.amount), 0),
+      tr: yInv.reduce((a, i) => a + num(invoiceAmountInRevenueYear(i, yr)), 0),
+      sec: yInv
+        .filter((i) => i.stage === 'LOA/PO' || isWonStage(i.stage))
+        .reduce((a, i) => a + num(invoiceAmountInRevenueYear(i, yr)), 0),
       oc: openDeals.length,
       ov: openDeals.reduce((a, v) => a + num(sumInvoiceAmounts(v.invoices.filter((i) => isOpenStage(i.stage)))), 0),
       od: mine.filter((v) => isOverdue(v.deal)).length,

@@ -27,4 +27,30 @@ describe('computeFinanceBooked', () => {
     expect(r.countLoaPo).toBe(1)
     expect(r.countInvoicedPaid).toBe(2)
   })
+
+  it('splits dual revenue years for the target year only', () => {
+    const data = {
+      ...mockBoardData,
+      opps: [
+        {
+          ...mockBoardData.opps[0],
+          id: 'dual',
+          invoices: [
+            {
+              id: 'x',
+              amount: 100.01,
+              revenueYear: 2026,
+              revenueYear2: 2027,
+              invoiceMonth: null,
+              stage: 'Invoiced' as const,
+              stageSince: null,
+              sortOrder: 0,
+            },
+          ],
+        },
+      ],
+    }
+    expect(computeFinanceBooked(data, 2026).total).toBe(50.01)
+    expect(computeFinanceBooked(data, 2027).total).toBe(50)
+  })
 })

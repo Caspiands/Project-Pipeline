@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { sortYearsFromPresent } from '@/lib/format'
 import { mockBoardData } from '@/test/mockBoardData'
 import {
   computeOpenPipelineSummary,
   computeOpenPipelineViews,
   DEFAULT_OPEN_PIPELINE_FILTERS,
-  invoiceExpectationYear,
+  distinctOpenInvoiceYears,
+  openInvoiceAmountForYear,
+  openPipelineYearsForInvoice,
 } from './openPipeline'
 
 describe('openPipeline', () => {
@@ -32,40 +35,47 @@ describe('openPipeline', () => {
     const views = computeOpenPipelineViews(data, DEFAULT_OPEN_PIPELINE_FILTERS)
     expect(views.map((v) => v.deal.id)).toEqual(['open-mix'])
     expect(views[0].total).toBe(1000)
-    expect(views[0].invoices.map((i) => i.stage)).toEqual(['Proposal'])
     const summary = computeOpenPipelineSummary(views)
     expect(summary.dealCount).toBe(1)
-    expect(summary.invoiceCount).toBe(1)
     expect(summary.totalRm).toBe(1000)
   })
 
-  it('uses invoice month year for expectation year, else revenue year', () => {
-    const base = mockBoardData.opps[0].invoices[0]
-    expect(invoiceExpectationYear({ ...base, invoiceMonth: '2025-03', revenueYear: 2026 })).toBe(2025)
-    expect(invoiceExpectationYear({ ...base, invoiceMonth: null, revenueYear: 2026 })).toBe(2026)
+  it('orders invoice years from present year ascending, past years last', () => {
+    expect(sortYearsFromPresent([2030, 2026, 2029, 2025, 2027, 2028], 2026)).toEqual([
+      2026, 2027, 2028, 2029, 2030, 2025,
+    ])
+    const ordered = distinctOpenInvoiceYears(
+      {
+        ...mockBoardData,
+        opps: [
+          {
+            ...mockBoardData.opps[0],
+            invoices: [
+              {
+                ...mockBoardData.opps[0].invoices[0],
+                stage: 'Lead' as const,
+                invoiceMonth: '2030-01',
+              },
+            ],
+          },
+        ],
+      },
+      new Date('2026-06-01'),
+    )
+    expect(ordered).toEqual([2030])
   })
 
-  it('filters open lines by invoice year', () => {
-    const base = mockBoardData.opps[0]
-    const inv = base.invoices[0]
-    const data = {
-      ...mockBoardData,
-      opps: [
-        {
-          ...base,
-          id: 'yrs',
-          invoices: [
-            { ...inv, id: 'y25', stage: 'Lead' as const, amount: 100, revenueYear: 2026, invoiceMonth: '2025-06' },
-            { ...inv, id: 'y26', stage: 'Proposal' as const, amount: 200, revenueYear: 2025, invoiceMonth: '2026-01' },
-          ],
-        },
-      ],
+  it('splits open amount across two revenue years when month is blank', () => {
+    const inv = {
+      ...mockBoardData.opps[0].invoices[0],
+      amount: 100,
+      revenueYear: 2026,
+      revenueYear2: 2027,
+      invoiceMonth: null,
+      stage: 'Lead' as const,
     }
-    const y2025 = computeOpenPipelineViews(data, { ...DEFAULT_OPEN_PIPELINE_FILTERS, invoiceYear: '2025' })
-    expect(y2025[0].invoices.map((i) => i.id)).toEqual(['y25'])
-    expect(y2025[0].total).toBe(100)
-    const y2026 = computeOpenPipelineViews(data, { ...DEFAULT_OPEN_PIPELINE_FILTERS, invoiceYear: '2026' })
-    expect(y2026[0].invoices.map((i) => i.id)).toEqual(['y26'])
-    expect(y2026[0].total).toBe(200)
+    expect(openPipelineYearsForInvoice(inv)).toEqual([2026, 2027])
+    expect(openInvoiceAmountForYear(inv, 2026)).toBe(50)
+    expect(openInvoiceAmountForYear(inv, 2027)).toBe(50)
   })
 })

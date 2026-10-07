@@ -1,4 +1,5 @@
 import { filterOpportunityViews } from './filters'
+import { invoiceReportingAmount } from './revenueYearAllocation'
 import type { BoardData, BoardFilters } from './types'
 
 const YOY_YEARS = [2025, 2026] as const
@@ -44,8 +45,8 @@ export function computeYoyByAccount(data: BoardData, filters: BoardFilters): Yoy
     const v26 = byYear[1].filter((v) => v.deal.account.trim() === account)
     const inv25 = v25.flatMap((v) => v.invoices)
     const inv26 = v26.flatMap((v) => v.invoices)
-    const total2025 = totalRmKnown(inv25.map((i) => i.amount))
-    const total2026 = totalRmKnown(inv26.map((i) => i.amount))
+    const total2025 = totalRmKnown(inv25.map((i) => invoiceReportingAmount(i, '2025')))
+    const total2026 = totalRmKnown(inv26.map((i) => invoiceReportingAmount(i, '2026')))
     const diff = total2025 != null && total2026 != null ? total2026 - total2025 : null
     return {
       account,
@@ -59,8 +60,8 @@ export function computeYoyByAccount(data: BoardData, filters: BoardFilters): Yoy
 
   const inv25 = byYear[0].flatMap((v) => v.invoices)
   const inv26 = byYear[1].flatMap((v) => v.invoices)
-  const t25 = totalRmKnown(inv25.map((i) => i.amount))
-  const t26 = totalRmKnown(inv26.map((i) => i.amount))
+  const t25 = totalRmKnown(inv25.map((i) => invoiceReportingAmount(i, '2025')))
+  const t26 = totalRmKnown(inv26.map((i) => invoiceReportingAmount(i, '2026')))
   const totals: YoyAccountRow = {
     account: 'Total',
     count2025: inv25.length,

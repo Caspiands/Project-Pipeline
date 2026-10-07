@@ -33,6 +33,7 @@ export interface OpportunityInvoice {
   id: string
   amount: number | null
   revenueYear: number
+  revenueYear2?: number | null
   invoiceMonth: string | null
   stage: Stage
   stageSince: string | null

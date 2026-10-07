@@ -1,5 +1,6 @@
 import { personName } from './names'
 import { ownersLabel } from './owners'
+import { formatInvoiceRevenueYears } from './revenueYearAllocation'
 import type { BoardData, Opportunity, OpportunityInvoice } from './types'
 
 export const PIPELINE_CSV_HEADERS: { key: string; label: string; patterns: RegExp[] }[] = [
@@ -64,7 +65,7 @@ function rowForInvoice(o: Opportunity, inv: OpportunityInvoice, data: BoardData)
     o.ownerIds.length ? ownersLabel(data, o.ownerIds) : '',
     inv.stage,
     inv.amount == null ? '' : String(inv.amount),
-    String(inv.revenueYear),
+    formatInvoiceRevenueYears(inv),
     o.quoteNo,
     isoDateOnly(o.quoteDate),
     isoDateOnly(o.loaDate),

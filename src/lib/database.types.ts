@@ -157,6 +157,7 @@ export type Database = {
           invoice_month: string | null
           opportunity_id: string
           revenue_year: number
+          revenue_year_2: number | null
           sort_order: number
           stage: Database['public']['Enums']['opp_stage']
           stage_since: string | null
@@ -169,6 +170,7 @@ export type Database = {
           invoice_month?: string | null
           opportunity_id: string
           revenue_year: number
+          revenue_year_2?: number | null
           sort_order?: number
           stage?: Database['public']['Enums']['opp_stage']
           stage_since?: string | null
@@ -181,6 +183,7 @@ export type Database = {
           invoice_month?: string | null
           opportunity_id?: string
           revenue_year?: number
+          revenue_year_2?: number | null
           sort_order?: number
           stage?: Database['public']['Enums']['opp_stage']
           stage_since?: string | null
